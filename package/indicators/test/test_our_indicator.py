@@ -15,7 +15,7 @@ for (u, v) in g.edges():
 
 # Louvain algorithm
 
-Louvain = Louvain_based_indicator(g, n = 1000, B = 50)
+Louvain = Louvain_based_indicator(g, n = 1000, year = 2000, B = 50)
 results = Louvain.get_indicator()
 
 Louvain_par = Louvain_based_indicator(g, B = 50,n_jobs = 5)
