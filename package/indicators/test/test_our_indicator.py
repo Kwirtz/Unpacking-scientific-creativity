@@ -1,18 +1,21 @@
 import networkx as nx
 import random
+import pickle
+import yaml 
 from package.graphs.community.Louvain import * 
 from package.graphs.community.Infomap import * 
 from package.graphs.community.OSLOM import * 
-import pickle
 
 
 g = nx.watts_strogatz_graph(1000, 10, 0.3, seed=12345)
 for (u, v) in g.edges():
     g.edges[u,v]['weight'] = random.randint(0,100)
 
+#%% Community
+
 # Louvain algorithm
 
-Louvain = Louvain_based_indicator(g, B = 50)
+Louvain = Louvain_based_indicator(g, n = 1000, B = 50)
 results = Louvain.get_indicator()
 
 Louvain_par = Louvain_based_indicator(g, B = 50,n_jobs = 5)
@@ -29,19 +32,17 @@ results = infomap_indicator.get_indicator()
 # OSLOM
 
 
-# Test using a sparse matrix pickled
+#%% Test using a sparse matrix pickled
 
 adj_matrix = pickle.load(open("Data/a02_authorlist/1980.p", "rb" ) )
 adj_matrix = adj_matrix.tocoo()
-
+name2index = pickle.load(open("Data/a02_authorlist/name2index.p", "rb" ) )
 
 edge_list = []
 for i,j,v in zip(adj_matrix.row, adj_matrix.col, adj_matrix.data):
     edge_list.append((i,j,{"weight":v}))
-
-
-import yaml    
-    
+   
+   
 with open("mongo_config.yaml", "r") as infile:
     pars = yaml.safe_load(infile)['PC_Kevin']
 URI = pars["neo4j_connection"]["URI"]
@@ -54,8 +55,7 @@ neo4j = {"auth":(name,password), "URI":URI, "db_name":"a02authorlist"+str(year)}
 g = nx.Graph(edge_list)
 
 
-Louvain = Louvain_based_indicator(g, B = 50, neo4j = neo4j)
+Louvain = Louvain_based_indicator(g, n = len(name2index), year = year, B = 50)
 results = Louvain.get_indicator()
 
-for i in test:
-    break
+#%% link prediction
