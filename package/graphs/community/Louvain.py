@@ -48,5 +48,5 @@ class Louvain_based_indicator(our_indicator):
             for community in communities:
                 community_appartenance = [i for i in itertools.combinations(communities[community], r=2)]
                 for i in community_appartenance:
+                    i = sorted(i)
                     self.df[i[0], i[1]] += 1
-                    self.df[i[1], i[0]] += 1    
