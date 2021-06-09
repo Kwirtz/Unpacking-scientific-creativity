@@ -99,7 +99,6 @@
 
 import time
 import os 
-os.chdir('../../')
 
 import tqdm
 import yaml 
@@ -672,7 +671,7 @@ from package import Novelty
 
 window = 3
 db  = 'pkg'
-for focal_year in range(2004,2021):
+for focal_year in range(2011,2021):
     data = Dataset(client_name = pars['client_name'], 
                    db_name =  pars['db_name'],
                    collection_name = pars[db]['collection_name'],
@@ -711,7 +710,7 @@ for focal_year in range(2004,2021):
     scores_adj = Novelty(past_adj,
                          futur_adj,
                          difficulty_adj,
-                         n_reutilisation = 3)
+                         n_reutilisation = 1)
     print(time.time()-t)
     
     for idx in tqdm.tqdm(items['current_items']):
@@ -728,7 +727,7 @@ for focal_year in range(2004,2021):
                                         indicator,
                                         item_name = 'journal',
                                         window = window,
-                                        n_reutilisation = str(3))
+                                        n_reutilisation = str(1))
     
                 data.update_mongo(idx,infos)
             except:

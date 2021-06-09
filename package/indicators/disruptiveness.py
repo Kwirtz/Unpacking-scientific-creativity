@@ -1,7 +1,7 @@
 import pymongo
 import numpy as np 
 
-def Disruptiveness(focal_paper_id, focal_paper_year, focal_paper_refs, df):
+def Disruptiveness(focal_paper_id, focal_paper_year, focal_paper_refs, citation_network):
     """
     Contrary to other
     indicators in this folder, Disruptiveness works at a document level.
@@ -41,11 +41,20 @@ def Disruptiveness(focal_paper_id, focal_paper_year, focal_paper_refs, df):
     #         })
     # }
         
-        
-    citing_focal_paper = df[df['refs_pmids'].apply(lambda x: focal_paper_id  in x)]
-    citing_ref_from_focal_paper = df[df['refs_pmids'].apply(lambda x: any([ref in x for ref in focal_paper_refs]))]
-    citing_ref_from_focal_paper = citing_ref_from_focal_paper[citing_ref_from_focal_paper.year > focal_paper_year]
+    citing_focal_paper_pmid = list(
+        citation_network[citation_network.index.get_level_values('refs_pmids') == focal_paper_id
+                         ].reset_index()['PMID'])
+
+    citing_focal_paper = citation_network[
+        citation_network.index.isin(citing_focal_paper_pmid, level='PMID')
+        ].reset_index().groupby('PMID')['refs_pmids'].apply(list).reset_index()
     
+    citing_ref_from_focal_paper = citation_network[
+        citation_network.index.isin(focal_paper_refs, level='refs_pmids')
+        ].reset_index()
+    
+    citing_ref_from_focal_paper = citing_ref_from_focal_paper[
+        citing_ref_from_focal_paper['Journal_JournalIssue_PubDate_Year']>focal_paper_year]
     
     citing_focal_paper = {row['pmid']:row['refs_pmids'] for index, row in citing_focal_paper.iterrows()}
     citing_ref_from_focal_paper = {row['pmid']:row['refs_pmids'] for index, row in citing_ref_from_focal_paper.iterrows()}
