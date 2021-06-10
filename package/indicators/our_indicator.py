@@ -7,10 +7,11 @@ import os
 from random import sample
 from joblib import Parallel, delayed
 from scipy.sparse import lil_matrix
+import sys
 
 class our_indicator:
     
-    def __init__(self, g, n, year, B = 500, weighted = True, n_jobs = None, freq_method = "approx", resample = 0.99):
+    def __init__(self, g, n, year, variable, B = 500, weighted = True, freq_method = "approx", resample = 0.95):
         
         '''
         Description
@@ -37,14 +38,18 @@ class our_indicator:
         self.n = n
         self.B = B
         self.weighted = weighted
-        self.n_jobs = n_jobs
         self.freq_method = freq_method
         self.resample = resample
         self.neo4j = {"URI":None, "auth":None}
         self.path = "paper/Results/our_novelty_non_normalized/"
         self.year = year
+        self.chunk = 0
+        self.variable = variable
+        
         if not os.path.exists(self.path):
             os.makedirs(self.path)
+        if not os.path.exists(self.path+ str(self.variable) + "/" + str(self.year)):
+            os.makedirs(self.path+ str(self.variable) + "/" + str(self.year))
             
     def compute_novelty(self):
         '''
@@ -64,6 +69,59 @@ class our_indicator:
             cx = self.df.tocoo()
             for i,j in zip(cx.row, cx.col):
                 self.df[i,j] = 1-(self.df[i,j]/(self.B*self.resample))
+    
+    def neo4j_insert_edges(self):
+        self.graph.run(self.transaction_edge, json=self.list_of_insertion)
+        self.list_of_insertion = []
+
+    def neo4j_create_index(self):
+        query = """CREATE INDEX IF NOT EXISTS
+        FOR (n:Items)
+        ON (n.name)
+        """
+        self.graph.run(query)
+
+    def neo4j_insert_nodes(self):
+        dict_items = [{'name':str(name[0])} for name in self.g.nodes(data=True)]
+        transaction = "UNWIND $json as data CREATE (n:Items) SET n = data"
+        self.graph.run(transaction, json=dict_items)
+    
+    def neo4j_create_db(self):
+        self.graph = py2neo.Graph(self.neo4j["URI"], auth=self.neo4j["auth"], name="neo4j")
+        query = """ CREATE DATABASE {} IF NOT EXISTS""".format(self.neo4j["db_name"])
+        self.graph.run(query)
+        self.graph = py2neo.Graph(self.neo4j["URI"], auth=self.neo4j["auth"], name=self.neo4j["db_name"])
+        self.graph.delete_all()
+        self.neo4j_insert_nodes()
+        self.neo4j_create_index()
+
+    def appearance_node(self):
+        nodes = list(self.subgraph.nodes())
+        nodes_cooc = itertools.combinations(nodes, r=2)
+        if self.freq_method=="matrix":
+            for cooc in nodes_cooc: 
+                cooc = sorted(cooc)
+                self.df_freq[str(cooc[0]), str(cooc[1])] += 1
+        elif self.freq_method=="neo4j":
+            for cooc in nodes_cooc:
+                cooc = sorted(cooc)
+                to_insert = {"Source":str(cooc[0]),"Target":str(cooc[1]),"Weight":1}
+                self.list_of_insertion.append(to_insert)
+                if len(self.list_of_insertion) > 10000:
+                    self.neo4j_insert_edges()
+        else:
+            pass
+    
+    def get_random_sample(self):
+        random_nodes = sample(list(self.g.nodes()), int(len(self.g)*self.resample))
+        subgraph = self.g.subgraph(random_nodes)
+        self.subgraph = subgraph
+
+    def run_iteration(self):
+        self.get_random_sample()
+        if self.freq_method !="approx" :
+            self.appearance_node()
+        self.community_appartenance()
         
     def generate_commu_adj_matrix(self):
         '''
@@ -103,61 +161,7 @@ class our_indicator:
         '''
         
         df_freq = lil_matrix((self.n, self.n), dtype = np.int16)
-        self.df_freq = df_freq
-        
-    def appearance_node(self):
-        nodes = list(self.subgraph.nodes())
-        nodes_cooc = itertools.combinations(nodes, r=2)
-        if self.freq_method=="matrix":
-            for cooc in nodes_cooc: 
-                cooc = sorted(cooc)
-                self.df_freq[str(cooc[0]), str(cooc[1])] += 1
-        elif self.freq_method=="neo4j":
-            for cooc in nodes_cooc:
-                cooc = sorted(cooc)
-                to_insert = {"Source":str(cooc[0]),"Target":str(cooc[1]),"Weight":1}
-                self.list_of_insertion.append(to_insert)
-                if len(self.list_of_insertion) > 10000:
-                    self.neo4j_insert_edges()
-        else:
-            pass
-
-    
-    def neo4j_insert_edges(self):
-        self.graph.run(self.transaction_edge, json=self.list_of_insertion)
-        self.list_of_insertion = []
-
-    def neo4j_create_index(self):
-        query = """CREATE INDEX IF NOT EXISTS
-        FOR (n:Items)
-        ON (n.name)
-        """
-        self.graph.run(query)
-
-    def neo4j_insert_nodes(self):
-        dict_items = [{'name':str(name[0])} for name in self.g.nodes(data=True)]
-        transaction = "UNWIND $json as data CREATE (n:Items) SET n = data"
-        self.graph.run(transaction, json=dict_items)
-    
-    def neo4j_create_db(self):
-        self.graph = py2neo.Graph(self.neo4j["URI"], auth=self.neo4j["auth"], name="neo4j")
-        query = """ CREATE DATABASE {} IF NOT EXISTS""".format(self.neo4j["db_name"])
-        self.graph.run(query)
-        self.graph = py2neo.Graph(self.neo4j["URI"], auth=self.neo4j["auth"], name=self.neo4j["db_name"])
-        self.graph.delete_all()
-        self.neo4j_insert_nodes()
-        self.neo4j_create_index()
-    
-    def get_random_sample(self):
-        random_nodes = sample(list(self.g.nodes()), int(len(self.g)*self.resample))
-        subgraph = self.g.subgraph(random_nodes)
-        self.subgraph = subgraph
-
-    def run_iteration(self):
-        self.get_random_sample()
-        if self.freq_method !="approx" :
-            self.appearance_node()
-        self.community_appartenance()     
+        self.df_freq = df_freq    
     
     def get_indicator(self):
         '''
@@ -176,8 +180,10 @@ class our_indicator:
         '''
         print("Create empty df ...")
         self.generate_commu_adj_matrix()
-        if self.freq_method == "matrix":
+        
+        if self.freq_method != "approx":
             self.generate_freq_matrix()
+            
         elif self.freq_method == "neo4j":
             self.neo4j_create_db()
             self.list_of_insertion = []
@@ -192,12 +198,10 @@ class our_indicator:
             """
         print("Created !")
         
-        if self.n_jobs == None:
-            for it in tqdm.tqdm(range(self.B)):
-                self.run_iteration() 
-        else:
-            Parallel(n_jobs=self.n_jobs,require="sharedmem")(delayed(self.run_iteration)() for i in tqdm.tqdm(range(self.B)))
-        #self.compute_novelty()
+        for it in tqdm.tqdm(range(self.B)):
+            self.run_iteration() 
+            self.chunk += 1
+            pickle.dump( self.df, open( self.path + "{}/{}/{}.p".format(self.variable,self.year,self.chunk), "wb" ))
+            self.generate_freq_matrix()
         pickle.dump( self.resample, open( self.path + "/P_approx.p", "wb" ) )
         pickle.dump( self.B, open( self.path + "/B_simulation.p", "wb" ) )
-        pickle.dump( self.df, open( self.path + "/{}.p".format(self.year), "wb" ) )
