@@ -37,4 +37,7 @@ def create_year(collection,year_month = False):
     else:
         collection.create_index([ ("yearmonth",1) ])
 
-#create_year(collection,year_month = True)
+
+create_year(collection)
+create_year(collection,year_month = True)
+
