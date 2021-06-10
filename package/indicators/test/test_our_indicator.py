@@ -34,9 +34,9 @@ results = infomap_indicator.get_indicator()
 
 #%% Test using a sparse matrix pickled
 
-adj_matrix = pickle.load(open("Data/a02_authorlist/1980.p", "rb" ) )
+adj_matrix = pickle.load(open("Paper/Data/a02_authorlist/1980.p", "rb" ) )
 adj_matrix = adj_matrix.tocoo()
-name2index = pickle.load(open("Data/a02_authorlist/name2index.p", "rb" ) )
+name2index = pickle.load(open("Paper/Data/a02_authorlist/name2index.p", "rb" ) )
 
 edge_list = []
 for i,j,v in zip(adj_matrix.row, adj_matrix.col, adj_matrix.data):
@@ -50,7 +50,7 @@ name = pars["neo4j_connection"]["auth"]["name"]
 password = pars["neo4j_connection"]["auth"]["password"]
 db_name = "test"
 
-year = 2000
+year = 1980
 neo4j = {"auth":(name,password), "URI":URI, "db_name":"a02authorlist"+str(year)}
 g = nx.Graph(edge_list)
 
