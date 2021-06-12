@@ -6,7 +6,6 @@ from package.graphs.community.Louvain import *
 from package.graphs.community.Infomap import * 
 from package.graphs.community.OSLOM import * 
 
-
 g = nx.watts_strogatz_graph(1000, 10, 0.3, seed=12345)
 for (u, v) in g.edges():
     g.edges[u,v]['weight'] = random.randint(0,100)
@@ -51,11 +50,10 @@ password = pars["neo4j_connection"]["auth"]["password"]
 db_name = "test"
 
 year = 1980
-neo4j = {"auth":(name,password), "URI":URI, "db_name":"a02authorlist"+str(year)}
 g = nx.Graph(edge_list)
 
 
-Louvain = Louvain_based_indicator(g, n = len(name2index), year = year, B = 50)
+Louvain = Louvain_based_indicator(g, n = len(name2index), year = 1980, variable = "a02_authorlist", B = 1)
 results = Louvain.get_indicator()
 
 #%% link prediction

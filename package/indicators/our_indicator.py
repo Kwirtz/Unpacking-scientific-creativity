@@ -198,10 +198,16 @@ class our_indicator:
             """
         print("Created !")
         
+        """
         for it in tqdm.tqdm(range(self.B)):
             self.run_iteration() 
             self.chunk += 1
             pickle.dump( self.df, open( self.path + "{}/{}/{}.p".format(self.variable,self.year,self.chunk), "wb" ))
             self.generate_freq_matrix()
-        pickle.dump( self.resample, open( self.path + "/P_approx.p", "wb" ) )
-        pickle.dump( self.B, open( self.path + "/B_simulation.p", "wb" ) )
+        """
+        self.run_iteration() 
+        self.chunk += 1
+        pickle.dump( self.df, open( self.path + "{}/{}/{}.p".format(self.variable,self.year,self.chunk), "wb" ))
+        self.generate_freq_matrix()
+        pickle.dump( self.resample, open( self.path + "{}/{}/P_approx.p".format(self.variable,self.year), "wb" ) )
+        #pickle.dump( self.B, open( self.path + "/B_simulation.p", "wb" ) )
