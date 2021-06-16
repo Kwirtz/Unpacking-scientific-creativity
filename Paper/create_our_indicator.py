@@ -17,7 +17,7 @@ args = parser.parse_args()
 
 
 
-
+#%%% Community
 #%% Authors
 
 
@@ -47,3 +47,4 @@ def compute_novelty(year,variable,B):
 compute_novelty(year = args.year, variable = "a02_authorlist", B = args.bootstrap )
 
 #Parallel(n_jobs=3)(delayed(compute_novelty)(year = i, variable = "a02_authorlist", B = 500) for i in range(1980,2020))
+

@@ -13,17 +13,19 @@ db = client['pkg']
 collection = db['articles']
 
 
-def create_year(collection,year_month = False):
+def create_year(collection,year_month = False, index = False):
 
-    docs = collection.find({'DateCompleted':{'$exists':1}})
+    docs = collection.find({})
     
     for doc in tqdm.tqdm(docs):
         try:
+            try:
+                date = int(doc['DateCompleted'].split('-'))
+            except:
+                date = int(doc['ArticalDate'].split('-'))
             if year_month == False:
-                year = int(doc['DateCompleted'].split('-')[0])
-                doc_infos = {"year": int(year)}
+                doc_infos = {"year": int(date[0])}
             else:
-                date = doc['DateCompleted'].split('-')
                 year = date[0]
                 month = date[1]
                 doc_infos = {"yearmonth": int(year+month)}               
@@ -32,10 +34,11 @@ def create_year(collection,year_month = False):
             collection.update_one(query,newvalues)
         except:
             pass
-    if year_month == False:    
-        collection.create_index([ ("year",1) ])
-    else:
-        collection.create_index([ ("yearmonth",1) ])
+    if index == True:
+        if year_month == False:    
+            collection.create_index([ ("year",1) ])
+        else:
+            collection.create_index([ ("yearmonth",1) ])
 
 
 create_year(collection)
