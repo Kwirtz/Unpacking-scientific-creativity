@@ -1,5 +1,5 @@
-from graphs.indicators.utils import * 
-from graphs.indicators.commonness import *
+from indicators.utils import * 
+from indicators.commonness import *
 import tqdm 
 import time
 

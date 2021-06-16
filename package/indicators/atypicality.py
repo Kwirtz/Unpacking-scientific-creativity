@@ -28,8 +28,8 @@ def Atypicality(true_current_adj,
         all_sampled_adj_freq.append(sampled_current_adj_freq.A)
         print('sampling '+str(i))
     samples_3d = np.dstack(all_sampled_adj_freq)
-    mean_adj_freq = csr_matrix(np.mean(samples_3d,axis = 2))
-    sd_adj_freq = csr_matrix(np.std(samples_3d,axis = 2))
+    mean_adj_freq = csr_matrix(np.mean(samples_3d,axis = 2),dtype=float)
+    sd_adj_freq = csr_matrix(np.std(samples_3d,axis = 2),dtype=float)
     
     mean_adj_freq.eliminate_zeros()
     sd_adj_freq.eliminate_zeros()

@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn import preprocessing
-from scipy.sparse import csr_matrix, triu 
+from scipy.sparse import csr_matrix, triu, lil_matrix
 from scipy.linalg import norm
 from itertools import combinations
 import pandas as pd
@@ -9,6 +9,7 @@ import tqdm
 import networkx as nx
 import pymongo
 import time
+import pickle
 
 def get_adjacency_matrix(unique_items,
                          items_list,
@@ -135,21 +136,36 @@ def get_paper_score(doc_adj,comb_scores,unique_items,indicator,item_name = 'jour
     return {key:doc_infos}
 
 
+def sum_adj_matrix(time_window,path):
+    
+    unique_items = list(
+        pickle.load(open( path + "/name2index.p", "rb" )).keys()) 
+    matrix = lil_matrix((len(unique_items),len(unique_items)))
+    
+    for focal_year in time_window:
+        fy_cooc = pickle.load(open( path + "/{}.p".format(focal_year), "rb" )) 
+        matrix += fy_cooc 
+        
+    return matrix
+
 #### Get infos from dataset depending on the indicator used
 
 
 class Dataset:
     
     def __init__(self,
-                 client_name,
-                 db_name,
-                 collection_name,
+                 client_name = None,
+                 db_name = None,
+                 collection_name = None,
                  var = None,
                  sub_var = None):
-        
-        self.client = pymongo.MongoClient(client_name)
-        self.db = self.client[db_name]
-        self.collection = self.db[collection_name]
+        if client_name:
+            self.client = pymongo.MongoClient(client_name)
+            self.db = self.client[db_name]
+            self.collection = self.db[collection_name]
+        else:
+            collection_name = 'articles'
+            
         if 'wos' in collection_name:
             self.VAR_YEAR = 'PY'
             self.VAR_PMID = 'PM'
