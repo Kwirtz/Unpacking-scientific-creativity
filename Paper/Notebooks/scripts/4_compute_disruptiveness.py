@@ -45,7 +45,7 @@ docs = [doc for doc in tqdm.tqdm(docs)]
 j= 0
 for doc in tqdm.tqdm(docs):
     j+=1
-    if j>1926:
+    if j>13412:
         try:
             i+=1
             infos = Disruptiveness(doc['PMID'],
