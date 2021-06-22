@@ -19,10 +19,7 @@ def create_year(collection,year_month = False, index = False):
     
     for doc in tqdm.tqdm(docs):
         try:
-            try:
-                date = int(doc['DateCompleted'].split('-'))
-            except:
-                date = int(doc['ArticalDate'].split('-'))
+            date = doc['DateCompleted'].split('-')
             if year_month == False:
                 doc_infos = {"year": int(date[0])}
             else:
