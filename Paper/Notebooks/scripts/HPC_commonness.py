@@ -30,6 +30,7 @@ import numpy as np
 import pandas as pd
 import pickle
 from scipy.sparse import lil_matrix
+from joblib import Parallel, delayed
 
 from package.indicators.utils import * 
  
@@ -45,18 +46,13 @@ unique_items = list(
             open(path1 + "/name2index.p", "rb" )).keys()) 
 
 docs = pickle.load(open(path2 +'/Paper/Data/yearly_data/{}'.format(var) + "/{}.p".format(focal_year), "rb" ) )
+
 #docs = pickle.load(open('D:/PKG/yearly_data/journal' + "/{}.p".format(focal_year), "rb" ) )
     
 
-data = Dataset(var = pars[db]['j_ref']['var'],
-               sub_var = pars[db]['j_ref']['sub_var'])
 
-docs = data.collection.find({
-    pars[db]['j_ref']['var']:{'$exists':'true'},
-    pars[db]['year_var']:{'$eq':focal_year}
-    }
-    )
-
+data = Dataset(var = pars[db][pars_var]['var'],
+               sub_var = pars[db][pars_var]['sub_var'])
 
 items = data.get_items(docs,
                        focal_year,
@@ -70,22 +66,30 @@ t = time.time()
 scores_adj = Commonness(current_adj)
 time.time() - t 
 
-for idx in tqdm.tqdm(items['current_items']):
-    if len(items['current_items'][idx])>2:
-        try:
-            current_adj = get_adjacency_matrix(unique_items,
-                                               [items['current_items'][idx]],
-                                               unique_pairwise = False,
-                                               keep_diag=True)
 
-            infos = get_paper_score(current_adj,
-                                    scores_adj,
-                                    unique_items,
-                                    indicator)
-            docs_infos.append({idx:infos})
-        except:
-            pass
+pickle.dump(scores_adj, open(path2 + '/Paper/Data/indicators_adj/{}'.format(var) + "/{}_{}.p".format('commonness',focal_year), "wb" ) )
 
 
+def populate_list(idx,current_item,unique_items,indicator,scores_adj):
+    if len(current_item)>2:
+            try:
+                current_adj = get_adjacency_matrix(unique_items,
+                                                   [current_item],
+                                                   unique_pairwise = False,
+                                                   keep_diag=True)
+    
+                infos = get_paper_score(current_adj,
+                                        scores_adj,
+                                        unique_items,
+                                        indicator)
+                data.update_mongo(idx,infos)
+            except:
+                return None
 
-pickle.dump(docs_infos, open(path2 + '/Paper/yearly_data/{}'.format(var) + "/{}_{}.p".format('commonness',focal_year), "wb" ) )
+current_items = items['current_items']
+
+print('yo')
+docs_infos = Parallel(n_jobs=12)(delayed(populate_list)(idx,current_items[idx],unique_items,indicator,scores_adj) for idx in tqdm.tqdm(current_items.keys()))
+
+pickle.dump(docs_infos, open(path2 + '/Paper/Data/yearly_data/{}'.format(var) + "/{}_{}.p".format('commonness',focal_year), "wb" ) )
+print('saved')

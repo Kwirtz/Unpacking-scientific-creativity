@@ -18,7 +18,7 @@ with open("mongo_config.yaml", "r") as infile:
     pars = yaml.safe_load(infile)['PC_BETA']
 db= 'pkg'
 
-for focal_year in range(2011,2021):
+for focal_year in range(2000,2004):
     
     data = Dataset(client_name = pars['client_name'], 
                    db_name =  pars['db_name'],

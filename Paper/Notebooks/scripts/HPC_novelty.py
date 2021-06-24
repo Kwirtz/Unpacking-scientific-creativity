@@ -13,9 +13,14 @@ if var == 'journal':
 elif var == 'mesh':
     pars_var = 'mesh'
 
+
+path1 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty/Data/CR_year_category/unweighted_network_no_self_loop'
+path2 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty'
+
+
 import time
 import sys, os
-os.chdir('../../../')
+os.chdir(path2)
 print(os.getcwd())
 sys.path.append(os.getcwd())
 import tqdm
@@ -24,14 +29,11 @@ import numpy as np
 import pandas as pd
 import pickle
 from scipy.sparse import lil_matrix
-
+from joblib import Parallel, delayed
 from package.indicators.utils import * 
  
 with open("mongo_config.yaml", "r") as infile:
     pars = yaml.safe_load(infile)['PC_BETA']
-
-path1 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty/Data/CR_year_category/unweighted_network_no_self_loop'
-path2 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty'
 db  = 'pkg'
 
 from package import Novelty
@@ -67,22 +69,37 @@ scores_adj = Novelty(past_adj,
                      difficulty_adj,
                      n_reutilisation = 1)
 print(time.time()-t)
-docs_infos = []
-for idx in tqdm.tqdm(items['current_items']):
-    if len(items['current_items'][idx])>2:
-        current_adj = get_adjacency_matrix(unique_items,
-                                           [items['current_items'][idx]],
-                                           unique_pairwise = True,
-                                           keep_diag=False)
 
-        infos = get_paper_score(current_adj,
-                                scores_adj,
-                                unique_items,
-                                indicator,
-                                item_name = var,
-                                window = str(window),
-                                n_reutilisation = str(1))
 
-        docs_infos.append({idx:infos})
+pickle.dump(scores_adj, open(path2 + '/Paper/Data/indicators_adj/{}'.format(var) + "/{}_{}.p".format('novelty',focal_year), "wb" ) )
 
-pickle.dump(docs_infos, open(path2 + '/Paper/yearly_data/{}'.format(var) + "/{}_{}.p".format('novelty',focal_year), "wb" ) )
+
+
+
+def populate_list(idx,current_item,unique_items,indicator,scores_adj,var,window):
+    if len(current_item)>2:
+            try:
+                current_adj = get_adjacency_matrix(unique_items,
+                                                   [current_item],
+                                                   unique_pairwise = True,
+                                                   keep_diag=False)
+    
+                infos = get_paper_score(current_adj,
+                                        scores_adj,
+                                        unique_items,
+                                        indicator,
+                                	item_name = var,
+                                	window = str(window),
+                                	n_reutilisation = str(1))
+                return {idx:infos}
+            except:
+                return None
+
+current_items = items['current_items']
+
+
+docs_infos = Parallel(n_jobs=12)(delayed(populate_list)(idx,current_items[idx],unique_items,indicator,scores_adj,var,window) for idx in tqdm.tqdm(current_items.keys()))
+print('yo')
+
+
+pickle.dump(docs_infos, open(path2 + '/Paper/Data/yearly_data/{}'.format(var) + "/{}_{}.p".format('novelty',focal_year), "wb" ) )
