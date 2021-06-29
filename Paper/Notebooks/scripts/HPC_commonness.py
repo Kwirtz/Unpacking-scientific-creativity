@@ -82,7 +82,7 @@ def populate_list(idx,current_item,unique_items,indicator,scores_adj):
                                         scores_adj,
                                         unique_items,
                                         indicator)
-                data.update_mongo(idx,infos)
+                return {idx:infos}
             except:
                 return None
 

@@ -8,6 +8,19 @@ import pandas as pd
 import pickle
 from scipy.sparse import lil_matrix, csr_matrix, triu
 from joblib import Parallel, delayed
+
+
+
+
+path1 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty/Data/CR_year_category/weighted_network_self_loop'
+path2 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty'
+
+os.chdir(path2)
+print(os.getcwd())
+sys.path.append(os.getcwd())
+
+
+
 from package.indicators.utils import * 
  
 with open("mongo_config.yaml", "r") as infile:
@@ -31,7 +44,7 @@ def populate_list(idx,current_item,unique_items,indicator,scores_adj):
                                         scores_adj,
                                         unique_items,
                                         indicator)
-                data.update_mongo(idx,infos)
+                return {idx:infos}
             except:
                 return None
             
@@ -40,7 +53,7 @@ parser = argparse.ArgumentParser(description='compute atypicality, var = journal
 
 parser.add_argument('-year')
 parser.add_argument('-var')
-parser.add_argument('-load')
+parser.add_argument('-load', type=bool)
 parser.add_argument('-nb_sample')
 args = parser.parse_args()
 focal_year = int(args.year)
@@ -51,15 +64,6 @@ if var == 'journal':
     pars_var = 'j_ref'
 elif var == 'mesh':
     pars_var = 'mesh'
-
-
-path1 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty/Data/CR_year_category/weighted_network_self_loop'
-path2 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty'
-
-os.chdir(path2)
-print(os.getcwd())
-sys.path.append(os.getcwd())
-
 
 
 unique_items = list(
@@ -79,9 +83,11 @@ items = data.get_items(docs,
                        indicator, 
                        restrict_wos_journal = False)
 
+current_items = items['current_items']
+
 true_current_adj_freq = pickle.load(open( path1 + "/{}.p".format(focal_year), "rb" )) 
 
-if args.load:
+if args.load == 'True':
     # Get nb_sample networks
     all_sampled_adj_freq = []
     for i in tqdm.tqdm(range(nb_sample)):
@@ -109,7 +115,6 @@ if args.load:
              "wb" ) )
     
     
-    current_items = items['current_items']
     
     print('yo')
     docs_infos = Parallel(n_jobs=12)(

@@ -10,13 +10,17 @@ var = str(args.var)
 
 if var == 'journal':
     pars_var = 'j_ref'
+    path1 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty/Data/CR_year_category/unweighted_network_no_self_loop'
 elif var == 'mesh':
     pars_var = 'mesh'
+    path1 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty/Data/Mesh_year_category/unweighted_network_no_self_loop'
 
 
-path1 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty/Data/CR_year_category/unweighted_network_no_self_loop'
+#path1 = r'C:\Users\Beta\Documents\GitHub\Taxonomy-of-novelty\Data\Mesh_year_category\weighted_network_self_loop'
 path2 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty'
+#path2 = r'C:\Users\Beta\Documents\GitHub\Taxonomy-of-novelty'
 
+       
 
 import time
 import sys, os
@@ -45,60 +49,66 @@ unique_items = list(
             open(path1 + "/name2index.p", "rb" )).keys()) 
 
 docs = pickle.load(open(path2 +'/Paper/Data/yearly_data/{}'.format(var) + "/{}.p".format(focal_year), "rb" ) )
-#docs = pickle.load(open('D:/PKG/yearly_data/journal' + "/{}.p".format(focal_year), "rb" ) )
-    
+#docs = pickle.load(open('D:/PKG/yearly_data/{}'.format(var) + "/{}.p".format(focal_year), "rb" ) )
+print('loaded')
 data = Dataset(var = pars[db][pars_var]['var'],
-               sub_var = pars[db][pars_var]['sub_var'])
-
+                sub_var = pars[db][pars_var]['sub_var'])
+print('iterate over document')
 items = data.get_items(docs,
-                       focal_year, 
-                       indicator,
-                       restrict_wos_journal = False)
+                        focal_year, 
+                        indicator,
+                        restrict_wos_journal = False)
 
+print('calculate past matrix')
 past_adj = sum_adj_matrix(range(1980,focal_year),
                           path1)
 
+print('calculate futur matrix')
 futur_adj = sum_adj_matrix(range(focal_year+1,focal_year+window+1),
                           path1)
 
+print('calculate difficulty matrix')
 difficulty_adj = sum_adj_matrix(range(focal_year-window,focal_year),
                           path1)
 t = time.time()
 scores_adj = Novelty(past_adj,
-                     futur_adj,
-                     difficulty_adj,
-                     n_reutilisation = 1)
+                      futur_adj,
+                      difficulty_adj,
+                      n_reutilisation = 1)
 print(time.time()-t)
 
 
 pickle.dump(scores_adj, open(path2 + '/Paper/Data/indicators_adj/{}'.format(var) + "/{}_{}.p".format('novelty',focal_year), "wb" ) )
 
 
+print('scores saved')
 
 
 def populate_list(idx,current_item,unique_items,indicator,scores_adj,var,window):
     if len(current_item)>2:
             try:
                 current_adj = get_adjacency_matrix(unique_items,
-                                                   [current_item],
-                                                   unique_pairwise = True,
-                                                   keep_diag=False)
+                                                    [current_item],
+                                                    unique_pairwise = True,
+                                                    keep_diag=False)
     
                 infos = get_paper_score(current_adj,
                                         scores_adj,
                                         unique_items,
                                         indicator,
-                                	item_name = var,
-                                	window = str(window),
-                                	n_reutilisation = str(1))
+                                 	item_name = var,
+                                 	window = str(window),
+                                 	n_reutilisation = str(1))
+                if infos['mesh_novelty_3y_1reu']['score']['novelty']!=0:
+                    print(idx)
                 return {idx:infos}
             except:
                 return None
 
 current_items = items['current_items']
+populate_list(idx,current_items[idx],unique_items,indicator,scores_adj,var,window)
 
-
-docs_infos = Parallel(n_jobs=12)(delayed(populate_list)(idx,current_items[idx],unique_items,indicator,scores_adj,var,window) for idx in tqdm.tqdm(current_items.keys()))
+docs_infos = Parallel(n_jobs=20)(delayed(populate_list)(idx,current_items[idx],unique_items,indicator,scores_adj,var,window) for idx in tqdm.tqdm(current_items.keys()))
 print('yo')
 
 
