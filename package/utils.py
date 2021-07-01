@@ -15,6 +15,7 @@ class create_cooc:
                  collection_name,
                  year_var,
                  time_window = range(1980,2020),
+                 month = False,
                  var = None,
                  sub_var = None,
                  weighted_network = False,
@@ -55,12 +56,20 @@ class create_cooc:
         self.var = var
         self.sub_var = sub_var
         self.year_var = year_var
-        self.time_window = time_window
+        if month == True:
+            months = range(1,13)
+            months = [str(month) if len(str(month))==2 else "0"+str(month) for month in months]
+            temp_list = []
+            for year in time_window:
+                temp_list += [int(str(year)+month) for month in months]
+            self.time_window = temp_list
+        else:
+            self.time_window = time_window
         self.weighted_network = weighted_network
         self.self_loop = self_loop
         type1 = 'weighted_network' if self.weighted_network else 'unweighted_network'
         type2 = 'self_loop' if self.self_loop else 'no_self_loop'
-        self.path = "Data/{}/{}_{}".format(var,type1,type2)
+        self.path = "Data/{}/{}/{}_{}".format(year_var,var,type1,type2)
         if not os.path.exists(self.path):
             os.makedirs(self.path)
             
@@ -131,7 +140,7 @@ class create_cooc:
         sparse matrix
 
         ''' 
-        self.x = lil_matrix((len(self.item_list), len(self.item_list)), dtype = np.int16)
+        self.x = lil_matrix((len(self.item_list), len(self.item_list)), dtype = np.uint32)
         
         
     def populate_matrix(self,year):
@@ -154,8 +163,8 @@ class create_cooc:
             docs_items = [set([item[self.sub_var] for item in doc[self.var]])
                           for doc in tqdm.tqdm(docs) if self.var in doc.keys()]
             lb = preprocessing.MultiLabelBinarizer(classes=self.item_list)
-            dtm_mat = csr_matrix(lb.fit_transform(docs_items))
-            self.x = lil_matrix(dtm_mat.T.dot(dtm_mat))
+            dtm_mat = csr_matrix(lb.fit_transform(docs_items), dtype = np.uint8)
+            self.x = lil_matrix(dtm_mat.T.dot(dtm_mat), dtype = np.uint16)
             
         if self.self_loop:
             self.x.setdiag(0)
