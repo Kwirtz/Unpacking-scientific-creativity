@@ -1,8 +1,10 @@
+# Download the data here http://er.tacc.utexas.edu/datasets/ped
+
 import pymysql
 import pymongo
 import tqdm
 
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
+con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='a03_keywordlist')
 cur = con.cursor()
 if cur.connection:
     print("connection exists")
@@ -31,8 +33,7 @@ mydb = client["pkg"]
 collection = mydb["articles"]
 
 def init_create():
-    tables.remove("a01_articles")
-    
+
     done = False
     process_n = 200000
     i = 0
@@ -53,7 +54,7 @@ init_create()
 
 # Insert table
 
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
+con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='a03_keywordlist')
 cur = con.cursor()
 if cur.connection:
     print("connection exists")
@@ -68,7 +69,7 @@ mydb = client["pkg"]
 collection = mydb["articles"]
 
 
-table = tables[5]
+table = tables[0]
     
 try:
     with open("D:/kevin_data/pkg_{}.txt".format(table),"r") as f:
@@ -78,7 +79,7 @@ except:
         
 query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
 process_n = 200000
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
+con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='a03_keywordlist')
 cur = con.cursor(pymysql.cursors.DictCursor)
 
 pbar = tqdm.tqdm()
