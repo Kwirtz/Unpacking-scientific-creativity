@@ -3,4 +3,4 @@
 module load python/python-3.6.0.i16
 RUNPATH=$HOME/Taxonomy-of-novelty/Paper/Notebooks/scripts/
 cd $RUNPATH
-python HPC_atypicality.py -year 2013 -var mesh -load True -nb_sample 20 >> meshHPCAtypicality_2013.log 2>&1
+python HPC_commonness.py -year 2001 -var journal >> journalHPCCommonness_2001.log 2>&1
