@@ -13,12 +13,11 @@ if var == 'journal':
     path1 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty/Data/CR_year_category/unweighted_network_no_self_loop'
 elif var == 'mesh':
     pars_var = 'mesh'
-    path1 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty/Data/Mesh_year_category/unweighted_network_no_self_loop'
-
+    path1 = r'C:\Users\Beta\Documents\GitHub\Taxonomy-of-novelty\Data\Mesh_year_category\weighted_network_self_loop'
 
 #path1 = r'C:\Users\Beta\Documents\GitHub\Taxonomy-of-novelty\Data\Mesh_year_category\weighted_network_self_loop'
-path2 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty'
-#path2 = r'C:\Users\Beta\Documents\GitHub\Taxonomy-of-novelty'
+#path2 = '/home2020/home/beta/ppelleti/Taxonomy-of-novelty'
+path2 = r'C:\Users\Beta\Documents\GitHub\Taxonomy-of-novelty'
 
        
 
@@ -40,6 +39,8 @@ with open("mongo_config.yaml", "r") as infile:
     pars = yaml.safe_load(infile)['PC_BETA']
 db  = 'pkg'
 
+focal_year = 2000
+
 from package import Novelty
 indicator = 'novelty'
 window = 3
@@ -48,11 +49,23 @@ unique_items = list(
         pickle.load(
             open(path1 + "/name2index.p", "rb" )).keys()) 
 
-docs = pickle.load(open(path2 +'/Paper/Data/yearly_data/{}'.format(var) + "/{}.p".format(focal_year), "rb" ) )
-#docs = pickle.load(open('D:/PKG/yearly_data/{}'.format(var) + "/{}.p".format(focal_year), "rb" ) )
-print('loaded')
-data = Dataset(var = pars[db][pars_var]['var'],
-                sub_var = pars[db][pars_var]['sub_var'])
+#docs = pickle.load(open(path2 +'/Paper/Data/yearly_data/{}'.format(var) + "/{}.p".format(focal_year), "rb" ) )
+# docs = pickle.load(open('D:/PKG/yearly_data/{}'.format(var) + "/{}.p".format(focal_year), "rb" ) )
+# print('loaded')
+# data = Dataset(var = pars[db][pars_var]['var'],
+#                 sub_var = pars[db][pars_var]['sub_var'])
+
+data = Dataset(client_name = pars['client_name'], 
+               db_name =  pars['db_name'],
+               collection_name = pars[db]['collection_name']),
+               var = pars[db][pars_var]['var'],
+               sub_var = pars[db][pars_var]['sub_var'])
+
+docs = data.collection.find({
+    pars[db][pars_var]['var']:{'$exists':'true'},
+    pars[db]['year_var']:{'$eq':focal_year}
+    }
+    )
 print('iterate over document')
 items = data.get_items(docs,
                         focal_year, 
@@ -77,8 +90,7 @@ scores_adj = Novelty(past_adj,
                       n_reutilisation = 1)
 print(time.time()-t)
 
-
-pickle.dump(scores_adj, open(path2 + '/Paper/Data/indicators_adj/{}'.format(var) + "/{}_{}.p".format('novelty',focal_year), "wb" ) )
+pickle.dump(scores_adj, open('D:/PKG/indicators_adj/{}'.format(var) + "/{}_{}.p".format('novelty',focal_year), "wb" ) )
 
 
 print('scores saved')
@@ -99,8 +111,6 @@ def populate_list(idx,current_item,unique_items,indicator,scores_adj,var,window)
                                  	item_name = var,
                                  	window = str(window),
                                  	n_reutilisation = str(1))
-                if infos['mesh_novelty_3y_1reu']['score']['novelty']!=0:
-                    print(idx)
                 return {idx:infos}
             except:
                 return None

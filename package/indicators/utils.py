@@ -76,7 +76,7 @@ def suffle_network(current_items):
    
     
 
-def get_paper_score(doc_adj,comb_scores,unique_items,indicator,item_name = 'journal',**kwargs):
+def get_paper_score(doc_adj,comb_scores,unique_items,indicator,item_name,**kwargs):
     
     doc_comb_adj = csr_matrix(doc_adj.multiply(comb_scores))
     
@@ -142,7 +142,7 @@ def sum_adj_matrix(time_window,path):
         pickle.load(open( path + "/name2index.p", "rb" )).keys()) 
     matrix = lil_matrix((len(unique_items),len(unique_items)))
     
-    for focal_year in time_window:
+    for focal_year in tqdm.tqdm(time_window):
         fy_cooc = pickle.load(open( path + "/{}.p".format(focal_year), "rb" )) 
         matrix += fy_cooc 
         

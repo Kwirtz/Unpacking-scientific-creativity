@@ -18,7 +18,6 @@ def _workaround_write(text):
     pyperclip.copy(text)
     pyautogui.hotkey('ctrl', 'v')
     
-print('go')
 from_ = int(open('D:\WOS_PKG\last_i.txt','r').read())
 chunksize = 6000
 
