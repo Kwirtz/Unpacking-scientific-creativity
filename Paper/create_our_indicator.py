@@ -7,35 +7,29 @@ from package.graphs.community.Infomap import *
 from package.graphs.community.OSLOM import * 
 from joblib import Parallel, delayed
 import argparse
-
+import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-y','--year', help='year of choice',required=True)
-parser.add_argument('-b','--bootstrap',help='iteration of bootstrap', required=True)
+parser.add_argument('-y','--year', help='year or month of choice',required=True)
+parser.add_argument('-bs','--bootstrap',help='Range start of bootstrap', required=True)
+parser.add_argument('-be','--bootstrap',help='Range end of bootstrap', required=True)
+parser.add_argument('-d','--date', help='year or month of choice',required=True)
+parser.add_argument('-v','--variable', help='variable to create indicator',required=True)
 args = parser.parse_args()
-# appending a path
-
-
-
-#%%% Community
-#%% Authors
-
 
 time_window_pre = 0
 time_window_post = 0
 
-
-
-def compute_novelty(year,variable,B):
-    name2index = pickle.load(open("Paper/Data/{}/name2index.p".format(variable),"rb") )
+def compute_novelty(date, year, variable,B):
+    name2index = pickle.load(open("Paper/Data/{}/{}/weighted_network_self_loop/name2index.p".format(date,variable),"rb") )
     n = len(name2index)
-    focal = pickle.load(open("Paper/Data/{}/{}.p".format(variable,year),"rb" ))
+    focal = pickle.load(open("Paper/Data/{}/{}/weighted_network_self_loop/{}.p".format(date,variable,year),"rb" ))
     if time_window_pre != 0:
         for past in range(year-time_window_pre,year,1):
-            focal +=  pickle.load(open("Paper/Data/{}/{}.p".format(past,variable),"rb" ))
+            focal +=  pickle.load(open("Paper/Data/{}/{}/weighted_network_self_loop/{}.p".format(date,variable,past),"rb" ))
     if time_window_post != 0:
         for future in range(year+1, year+time_window_post+1, 1):
-            focal += pickle.load(open("Paper/Data/{}/{}.p".format(future,variable),"rb" ))
+            focal += pickle.load(open("Paper/Data/{}/{}/weighted_network_self_loop/{}.p".format(date,variable,future),"rb" ))
     focal = focal.tocoo()
     edge_list = [(i,j,{"weight":v}) for i,j,v in zip(focal.row, focal.col, focal.data)]
     g = nx.Graph(edge_list)
@@ -43,8 +37,7 @@ def compute_novelty(year,variable,B):
     Louvain = Louvain_based_indicator(g, n = n, year = year, variable = variable, B = B)
     results = Louvain.get_indicator()
 
-
-compute_novelty(year = args.year, variable = "a02_authorlist", B = args.bootstrap )
-
-#Parallel(n_jobs=3)(delayed(compute_novelty)(year = i, variable = "a02_authorlist", B = 500) for i in range(1980,2020))
-
+for i in tqdm.tqdm(range(500)):
+    compute_novelty(date = "year", year = 1980, variable = "CR_year_category",B = i)
+compute_novelty(date = "year", year = 1980, variable = "CR_year_category",B = 2)
+compute_novelty(date = args.date, year = args.year, variable = args.variable, B = args.bootstrap )
