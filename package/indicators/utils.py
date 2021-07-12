@@ -2,7 +2,7 @@ import numpy as np
 from sklearn import preprocessing
 from scipy.sparse import csr_matrix, triu, lil_matrix
 from scipy.linalg import norm
-from itertools import combinations
+from itertools import combinations, chain
 import pandas as pd
 from random import sample
 import tqdm
@@ -23,7 +23,7 @@ def get_adjacency_matrix(unique_items,
     else:
         combi = []
         #adj_mat = csr_matrix((len(lb.classes),len(lb.classes)))
-        for item in items_list:
+        for item in tqdm.tqdm(items_list):
             for comb in combinations(item,2):
                 combi.append(tuple(sorted(comb)))
                 #i = np.where(np.array(lb.classes) == comb[0])
@@ -54,19 +54,20 @@ def get_difficulty_cos_sim(difficulty_adj):
 #     return adj_mat/nb_comb
     
 def suffle_network(current_items):
-    df = []
+    
+    lst = []
     for idx in current_items:
         for item in current_items[idx]:
-          df.append({'idx':idx,
+          lst.append({'idx':idx,
                       'journal':item['journal'],
                       'year': item['year']})  
-    df = pd.DataFrame(df)    
-    
+    df = pd.DataFrame(lst)    
+    print('start sampling')
     years = set(df.year)
-    for year in years:
+    for year in  years:
         journals_y = list(df.journal[df.year == year])
         df.journal[df.year == year] = sample(journals_y,k = len(journals_y))
-    
+    print('list journals')
     random_network = []
     for idx in current_items:
         random_network.append(list(df.journal[df.idx == idx]))

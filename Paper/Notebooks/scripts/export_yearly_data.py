@@ -5,15 +5,10 @@ import os
 
 import tqdm
 import yaml 
-import numpy as np
-import pandas as pd
 import pickle
-from scipy.sparse import lil_matrix
 
 from package.indicators.utils import * 
 from package import Dataset
-from package.utils import create_cooc
- 
 with open("mongo_config.yaml", "r") as infile:
     pars = yaml.safe_load(infile)['PC_BETA']
 db= 'pkg'
