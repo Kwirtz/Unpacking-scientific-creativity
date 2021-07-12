@@ -1,9 +1,8 @@
 import sys
-sys.path.append('D:/Github/Taxonomy-of-novelty')
+sys.path.append('/home2020/home/beta/kwirtz/Taxonomy-of-novelty')
 import networkx as nx
 import pickle
 from package.graphs.community.Louvain import * 
-from package.graphs.community.Infomap import * 
 from package.graphs.community.OSLOM import * 
 from joblib import Parallel, delayed
 import argparse
@@ -11,8 +10,8 @@ import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-y','--year', help='year or month of choice',required=True)
-parser.add_argument('-bs','--bootstrap',help='Range start of bootstrap', required=True)
-parser.add_argument('-be','--bootstrap',help='Range end of bootstrap', required=True)
+parser.add_argument('-bs','--start',help='Range start of bootstrap', required=True)
+parser.add_argument('-be','--end',help='Range end of bootstrap', required=True)
 parser.add_argument('-d','--date', help='year or month of choice',required=True)
 parser.add_argument('-v','--variable', help='variable to create indicator',required=True)
 args = parser.parse_args()
@@ -37,7 +36,5 @@ def compute_novelty(date, year, variable,B):
     Louvain = Louvain_based_indicator(g, n = n, year = year, variable = variable, B = B)
     results = Louvain.get_indicator()
 
-for i in tqdm.tqdm(range(500)):
-    compute_novelty(date = "year", year = 1980, variable = "CR_year_category",B = i)
-compute_novelty(date = "year", year = 1980, variable = "CR_year_category",B = 2)
-compute_novelty(date = args.date, year = args.year, variable = args.variable, B = args.bootstrap )
+for i in tqdm.tqdm(range(int(args.start),int(args.end),1)):
+    compute_novelty(date = args.date, year = int(args.year), variable = args.variable,B = i)

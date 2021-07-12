@@ -39,7 +39,7 @@ class our_indicator:
         self.B = B
         self.weighted = weighted
         self.resample = resample
-        self.path = "paper/Results/our_novelty_non_normalized/"
+        self.path = "Paper/Results/our_novelty_non_normalized/"
         self.year = year
         self.variable = variable
         
@@ -69,16 +69,6 @@ class our_indicator:
             for i,j in zip(cx.row, cx.col):
                 self.df[i,j] = 1-(self.df[i,j]/(self.B*self.resample))
     
-    def get_random_sample(self):
-        random_nodes = sample(list(self.g.nodes()), int(len(self.g)*self.resample))
-        subgraph = self.g.subgraph(random_nodes)
-        subgraph_nodes = list(subgraph.nodes())
-        pickle.dump(subgraph_nodes, open( self.path + "{}/{}/subgraph_nodes/{}.p".format(self.variable,self.year,self.B), "wb" ))
-        self.subgraph = subgraph
-
-    def run_iteration(self):
-        self.get_random_sample()
-        self.community_appartenance()
         
     def generate_commu_adj_matrix(self):
         '''
@@ -99,6 +89,18 @@ class our_indicator:
         
         df = lil_matrix((self.n, self.n), dtype = np.int16)
         self.df = df
+
+    def get_random_sample(self):
+        random_nodes = sample(list(self.g.nodes()), int(len(self.g)*self.resample))
+        subgraph = self.g.subgraph(random_nodes)
+        subgraph_nodes = list(subgraph.nodes())
+        pickle.dump(subgraph_nodes, open( self.path + "{}/{}/subgraph_nodes/{}.p".format(self.variable,self.year,self.B), "wb" ))
+        self.subgraph = subgraph
+
+
+    def run_iteration(self):
+        self.get_random_sample()
+        self.community_appartenance()
     
     def get_indicator(self):
         '''
@@ -127,5 +129,3 @@ class our_indicator:
         """
         self.run_iteration() 
         pickle.dump( self.df, open( self.path + "{}/{}/{}.p".format(self.variable,self.year,self.B), "wb" ))
-        pickle.dump( self.resample, open( self.path + "{}/{}/P_approx.p".format(self.variable,self.year), "wb" ) )
-        #pickle.dump( self.B, open( self.path + "/B_simulation.p", "wb" ) )

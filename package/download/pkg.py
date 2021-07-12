@@ -98,7 +98,7 @@ if table.startswith("a"):
                         list_articles.append(doc)
                         continue
                     else:
-                        collection.find_one_and_update({"PMID":(doc["PMID"]-1)}, {"$set":{table:list_articles}})
+                        collection.find_one_and_update({"PMID":(list_articles[0]["PMID"])}, {"$set":{table:list_articles}})
                         list_articles = [doc]
                 else:
                     list_articles = [doc]
