@@ -10,6 +10,12 @@ import networkx as nx
 import pymongo
 import time
 import pickle
+from joblib import Parallel, delayed
+
+def get_comb(item):
+    combi = [tuple(sorted(comb)) for comb in combinations(item,2)]
+    return combi
+    
 
 def get_adjacency_matrix(unique_items,
                          items_list,
@@ -21,16 +27,19 @@ def get_adjacency_matrix(unique_items,
         dtm_mat = csr_matrix(lb.fit_transform(items_list))
         adj_mat = dtm_mat.T.dot(dtm_mat)
     else:
-        combi = []
-        #adj_mat = csr_matrix((len(lb.classes),len(lb.classes)))
-        for item in tqdm.tqdm(items_list):
-            for comb in combinations(item,2):
-                combi.append(tuple(sorted(comb)))
-                #i = np.where(np.array(lb.classes) == comb[0])
-                #j = np.where(np.array(lb.classes) == comb[1])
-                #adj_mat[i,j] = int(adj_mat.A[i,j])+1
+        # combi = []
+        # #adj_mat = csr_matrix((len(lb.classes),len(lb.classes)))
+        # for item in tqdm.tqdm(items_list):
+        #     for comb in combinations(item,2):
+        #         combi.append(tuple(sorted(comb)))
+        #         #i = np.where(np.array(lb.classes) == comb[0])
+        #         #j = np.where(np.array(lb.classes) == comb[1])
+        #         #adj_mat[i,j] = int(adj_mat.A[i,j])+1
                 
-                
+        combi = Parallel(n_jobs= 20)(delayed(get_comb)(item)
+                                      for item in tqdm.tqdm(items_list,
+                                                            desc ='feed network'))  
+        combi = list(chain.from_iterable(combi))
         G = nx.MultiGraph(combi)
         G.add_nodes_from(lb.classes)
         adj_mat = nx.adjacency_matrix(G,nodelist=sorted(G.nodes()))
@@ -38,6 +47,22 @@ def get_adjacency_matrix(unique_items,
         adj_mat.setdiag(0)
     adj_mat.eliminate_zeros()
     return adj_mat
+
+
+# Moslty used for Novelty
+   
+def sum_adj_matrix(time_window,path):
+    
+    unique_items = list(
+        pickle.load(open( path + "/name2index.p", "rb" )).keys()) 
+    matrix = lil_matrix((len(unique_items),len(unique_items)))
+    
+    for focal_year in tqdm.tqdm(time_window):
+        fy_cooc = pickle.load(open( path + "/{}.p".format(focal_year), "rb" )) 
+        matrix += fy_cooc 
+        
+    return matrix
+
 
 def get_difficulty_cos_sim(difficulty_adj):
      
@@ -48,6 +73,8 @@ def get_difficulty_cos_sim(difficulty_adj):
      cos_sim.setdiag(0)
      cos_sim.eliminate_zeros()
      return cos_sim
+ 
+# Mostly used in Atypicality    
  
 # def get_comb_freq(adj_mat):
 #     nb_comb = np.sum(triu(adj_mat))
@@ -67,16 +94,65 @@ def suffle_network(current_items):
     for year in  years:
         journals_y = list(df.journal[df.year == year])
         df.journal[df.year == year] = sample(journals_y,k = len(journals_y))
-    print('list journals')
-    random_network = []
-    for idx in current_items:
-        random_network.append(list(df.journal[df.idx == idx]))
-    
+    # random_network = []
+    # for idx in tqdm.tqdm(current_items,desc='make sampled journal list'):
+    #     journal_list = list(df.journal[df.idx == idx])
+    #     random_network.append(journal_list)
+    random_network = list(df.groupby('idx')['journal'].apply(list))
+    # random_network = Parallel(n_jobs= 20)(delayed(lambda df, idx: list(df.journal[df.idx == idx]))(df, idx)
+    #                                   for idx in tqdm.tqdm(current_items))  
     return random_network
         
-   
-    
+def get_unique_value_used(all_sampled_adj_freq):
+    tuples_set = set()
+    for sampled_adj in tqdm.tqdm(all_sampled_adj_freq):
+        i_list = sampled_adj.nonzero()[0].tolist()
+        j_list = sampled_adj.nonzero()[1].tolist()
+        for i, j in zip(i_list,j_list):
+            tuples_set.update([(i, j)])
+    return list(tuples_set)
 
+def get_cell_mean_sd(value,all_sampled_adj_freq):
+    count = []
+    for sampled_adj in all_sampled_adj_freq:
+        count.append(sampled_adj[value[0],value[1]])
+    return value, np.mean(count), np.std(count)
+
+def get_comb_mean_sd(all_sampled_adj_freq,unique_values):
+    
+    mean_comb = lil_matrix(all_sampled_adj_freq[0].shape)
+    sd_comb = lil_matrix(all_sampled_adj_freq[0].shape)
+    
+    # #mean_sd_list = [get_cell_mean_sd(value,all_sampled_adj_freq) for value in tqdm.tqdm(unique_values)]
+    # print('get mean and sd')
+    # mean_sd_list = Parallel(n_jobs= 20)(delayed(get_cell_mean_sd)(value,all_sampled_adj_freq)
+    #                                     for value in tqdm.tqdm(unique_values))
+    
+    
+    # row, col, mean, sd = [], [], [], []
+    # for value, m, s in tqdm.tqdm(mean_sd_list):
+    #     row.append(value[0])
+    #     col.append(value[1])
+    #     mean.append(m)
+    #     sd.append(s)
+        
+    # mean_comb = sparse.coo_matrix((mean, (row, col)),
+    #                               shape=all_sampled_adj_freq[0].shape)
+    # sd_comb = sparse.coo_matrix((sd, (row, col)),
+    #                               shape=all_sampled_adj_freq[0].shape)
+    
+    for value in tqdm.tqdm(unique_values):
+        value, mean, sd = get_cell_mean_sd(value,all_sampled_adj_freq)
+        mean_comb[value[0],value[1]] = mean
+        sd_comb[value[0],value[1]] = sd
+    # print('populate matrix')
+    # for value, mean, sd in tqdm.tqdm(mean_sd_list):
+    #     mean_comb[value[0],value[1]] = mean
+    #     sd_comb[value[0],value[1]] = sd
+    
+    return mean_comb, sd_comb
+        
+        
 def get_paper_score(doc_adj,comb_scores,unique_items,indicator,item_name,**kwargs):
     
     doc_comb_adj = csr_matrix(doc_adj.multiply(comb_scores))
@@ -120,6 +196,8 @@ def get_paper_score(doc_adj,comb_scores,unique_items,indicator,item_name,**kwarg
         'nb_comb':len(comb_infos) if comb_infos else 0,
         'comb_infos': comb_infos
         }
+    
+    
     if indicator == 'novelty':
         score = {'novelty':sum(comb_list) if comb_idx[0] else 0}
     elif indicator == 'atypicality':
@@ -137,17 +215,6 @@ def get_paper_score(doc_adj,comb_scores,unique_items,indicator,item_name,**kwarg
     return {key:doc_infos}
 
 
-def sum_adj_matrix(time_window,path):
-    
-    unique_items = list(
-        pickle.load(open( path + "/name2index.p", "rb" )).keys()) 
-    matrix = lil_matrix((len(unique_items),len(unique_items)))
-    
-    for focal_year in tqdm.tqdm(time_window):
-        fy_cooc = pickle.load(open( path + "/{}.p".format(focal_year), "rb" )) 
-        matrix += fy_cooc 
-        
-    return matrix
 
 #### Get infos from dataset depending on the indicator used
 
