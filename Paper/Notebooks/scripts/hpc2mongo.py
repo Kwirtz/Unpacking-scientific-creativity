@@ -25,7 +25,7 @@ def hpc2mongo(time_window,var_type,indicator):
                 except Exception as e:
                     print(e)
 
-hpc2mongo([2007,2016],'mesh','novelty')
+hpc2mongo([2015,2016],'mesh','novelty')
 
 
 

@@ -11,6 +11,8 @@ import pymongo
 import time
 import pickle
 from joblib import Parallel, delayed
+import json
+import time
 
 def get_comb(item):
     combi = [tuple(sorted(comb)) for comb in combinations(item,2)]
@@ -22,27 +24,35 @@ def get_adjacency_matrix(unique_items,
                          unique_pairwise,
                          keep_diag):
     
-    lb = preprocessing.MultiLabelBinarizer(classes=sorted(unique_items))
-    if unique_pairwise:
+    if unique_pairwise:     
+        lb = preprocessing.MultiLabelBinarizer(classes=sorted(list(unique_items.keys())))
         dtm_mat = csr_matrix(lb.fit_transform(items_list))
         adj_mat = dtm_mat.T.dot(dtm_mat)
     else:
-        # combi = []
-        # #adj_mat = csr_matrix((len(lb.classes),len(lb.classes)))
-        # for item in tqdm.tqdm(items_list):
-        #     for comb in combinations(item,2):
-        #         combi.append(tuple(sorted(comb)))
-        #         #i = np.where(np.array(lb.classes) == comb[0])
-        #         #j = np.where(np.array(lb.classes) == comb[1])
-        #         #adj_mat[i,j] = int(adj_mat.A[i,j])+1
+        #combi = []
+        adj_mat = lil_matrix((len(unique_items.keys()),len(unique_items.keys())), dtype = np.uint32)
+        for item in tqdm.tqdm(items_list):
+            # for comb in combinations(item,2):
+            #     #combi.append(tuple(sorted(comb)))
+            #     comb = sorted(comb)
+            #     i = np.where(np.array(lb.classes) == comb[0])
+            #     j = np.where(np.array(lb.classes) == comb[1])
+            #     adj_mat[i,j] = int(adj_mat[i,j].A) +1
                 
-        combi = Parallel(n_jobs= 20)(delayed(get_comb)(item)
-                                      for item in tqdm.tqdm(items_list,
-                                                            desc ='feed network'))  
-        combi = list(chain.from_iterable(combi))
-        G = nx.MultiGraph(combi)
-        G.add_nodes_from(lb.classes)
-        adj_mat = nx.adjacency_matrix(G,nodelist=sorted(G.nodes()))
+            for combi in list(combinations(item, r=2)):
+                combi = sorted(combi)
+                ind_1 = unique_items[combi[0]]
+                ind_2 = unique_items[combi[1]]
+                adj_mat[ind_1,ind_2] += 1
+                adj_mat[ind_2,ind_1] += 1
+            
+        # combi = Parallel(n_jobs= 20)(delayed(get_comb)(item)
+        #                               for item in tqdm.tqdm(items_list,
+        #                                                     desc ='feed network'))  
+        # combi = list(chain.from_iterable(combi))
+        # G = nx.MultiGraph(combi)
+        # G.add_nodes_from(lb.classes)
+        # adj_mat = nx.adjacency_matrix(G,nodelist=sorted(G.nodes()))
     if keep_diag == False:
         adj_mat.setdiag(0)
     adj_mat.eliminate_zeros()
@@ -118,7 +128,7 @@ def get_cell_mean_sd(value,all_sampled_adj_freq):
         count.append(sampled_adj[value[0],value[1]])
     return value, np.mean(count), np.std(count)
 
-def get_comb_mean_sd(all_sampled_adj_freq,unique_values):
+def get_comb_mean_sd(path2,all_sampled_adj_freq,unique_values,var,focal_year):
     
     mean_comb = lil_matrix(all_sampled_adj_freq[0].shape)
     sd_comb = lil_matrix(all_sampled_adj_freq[0].shape)
@@ -141,10 +151,46 @@ def get_comb_mean_sd(all_sampled_adj_freq,unique_values):
     # sd_comb = sparse.coo_matrix((sd, (row, col)),
     #                               shape=all_sampled_adj_freq[0].shape)
     
-    for value in tqdm.tqdm(unique_values):
+    try:
+        with open(path2 + '/indicators_adj/{}'.format(var) + "/iteration/mean_info_{}_{}.p".format('atypicality',focal_year),
+              'rb') as f:
+            mean_comb = pickle.load(f)
+    except:
+        mean_comb = lil_matrix(all_sampled_adj_freq[0].shape)
+    
+    try:
+        with open(path2 + '/indicators_adj/{}'.format(var) + "/iteration/sd_info_{}_{}.p".format('atypicality',focal_year),
+            'rb') as f:
+            sd_comb = pickle.load(f)
+    except:
+        sd_comb = lil_matrix(all_sampled_adj_freq[0].shape)
+    
+   
+    try:
+        with open(path2 + '/indicators_adj/{}'.format(var) + "/iteration/mean_sd_last_i_{}_{}.txt".format('atypicality',focal_year),
+              'r') as last_i:
+            i = int(last_i.read())
+    except:
+        i = 0
+    
+    # For HPC 
+    t = time.time()
+    for value in tqdm.tqdm(unique_values[i:]):
+        i+=1
         value, mean, sd = get_cell_mean_sd(value,all_sampled_adj_freq)
         mean_comb[value[0],value[1]] = mean
         sd_comb[value[0],value[1]] = sd
+        if int(i)%1e7 == 0 :
+            with open(path2 + '/indicators_adj/{}'.format(var) + "/iteration/mean_sd_last_i_{}_{}.txt".format('atypicality',focal_year),
+                      'w') as last_i:
+                last_i.write(str(i))
+            pickle.dump(mean_comb, open(path2 + '/indicators_adj/{}'.format(var) + "/iteration/mean_info_{}_{}.p".format('atypicality',focal_year),
+                                        "wb" ) )
+            pickle.dump(sd_comb, open(path2 + '/indicators_adj/{}'.format(var) + "/iteration/sd_info_{}_{}.p".format('atypicality',focal_year),
+                                        "wb" ) )
+            # For HPC
+            if time.time() - t > (3600*23):
+                break
     # print('populate matrix')
     # for value, mean, sd in tqdm.tqdm(mean_sd_list):
     #     mean_comb[value[0],value[1]] = mean
@@ -288,6 +334,7 @@ class Dataset:
         ######### Iterate over documents #########
         for items in tqdm.tqdm(docs):
             doc_items = list()
+           
             for item in items[self.VAR]:
                 ######### Get doc item and update journal list #########
                 all_item, doc_item = self.get_item_infos(item,
@@ -304,7 +351,8 @@ class Dataset:
             if items[self.VAR_YEAR] == focal_year:
                 current_items.update({
                     str(items[self.VAR_PMID]):doc_items
-                })       
+                })  
+        
                     
         ######### Return dict with items for all periods #########       
         list_items = {

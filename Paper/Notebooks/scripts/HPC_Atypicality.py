@@ -38,7 +38,7 @@ def populate_list(idx,current_item,unique_items,item_name,indicator,scores_adj):
     
                 infos = get_paper_score(current_adj,
                                         scores_adj,
-                                        unique_items,
+                                        list(unique_items.keys()),
                                         indicator,
                                         item_name)
                 return {idx:infos}
@@ -46,7 +46,7 @@ def populate_list(idx,current_item,unique_items,item_name,indicator,scores_adj):
                 print(e)
 
 
-def compute_comb_score(path2,true_current_adj_freq,nb_sample,focal_year):
+def compute_comb_score(path2,true_current_adj_freq,nb_sample,var,focal_year):
     # Get nb_sample networks
     all_sampled_adj_freq = []
     for i in tqdm.tqdm(range(nb_sample)):
@@ -58,7 +58,12 @@ def compute_comb_score(path2,true_current_adj_freq,nb_sample,focal_year):
     
 
     unique_values = get_unique_value_used(all_sampled_adj_freq)
-    mean_adj_freq, sd_adj_freq = get_comb_mean_sd(all_sampled_adj_freq,unique_values)
+    
+    mean_adj_freq, sd_adj_freq = get_comb_mean_sd(path2,
+                                                  all_sampled_adj_freq,
+                                                  unique_values,
+                                                  var,
+                                                  focal_year)
     
     comb_scores = (true_current_adj_freq-mean_adj_freq)/sd_adj_freq  
     comb_scores[np.isinf(comb_scores)] =  0
@@ -93,7 +98,7 @@ def update_paper_values(path2,current_items,unique_items,indicator,focal_year):
 
 # Run nb_sample network shuffling, get the frequency of each combinaison for each sample 
 
-def sample_network(path2,current_items,nb_sample,focal_year):
+def sample_network(path2,current_items,unique_items,nb_sample,focal_year):
         
     allready_computed = [f for f in os.listdir(path2 + '/sample_network/{}'.format(var)) 
                          if re.match(r'sample_[0-9+]_{}'.format(focal_year), f)]
@@ -131,26 +136,24 @@ elif var == 'mesh':
     pars_var = 'mesh'
     path1 = r'C:\Users\Beta\Documents\GitHub\Taxonomy-of-novelty\Data\Mesh_year_category\weighted_network_self_loop'
 
-unique_items = list(
-        pickle.load(
-            open(path1 + "/name2index.p", "rb" )).keys()) 
-
+unique_items = pickle.load(
+            open(path1 + "/name2index.p", "rb" ))
 # docs = pickle.load(open(path2 +'/Paper/Data/yearly_data/{}'.format(var) + "/{}.p".format(focal_year), "rb" ) )
 
-# docs = pickle.load(open('D:/PKG/yearly_data/journal' + "/{}.p".format(focal_year), "rb" ) )
+docs = pickle.load(open('D:/PKG/yearly_data/'+var + "/{}.p".format(focal_year), "rb" ) )
     
 
-# data = Dataset(var = pars[db][pars_var]['var'],
-#               sub_var = pars[db][pars_var]['sub_var'])
+data = Dataset(var = pars[db][pars_var]['var'],
+              sub_var = pars[db][pars_var]['sub_var'])
 
-# items = data.get_items(docs,
-#                       focal_year,
-#                       indicator, 
-#                       restrict_wos_journal = False)
+items = data.get_items(docs,
+                      focal_year,
+                      indicator, 
+                      restrict_wos_journal = False)
 
-# current_items = items['current_items']
+current_items = items['current_items']
 
 true_current_adj_freq = pickle.load(open( path1 + "/{}.p".format(focal_year), "rb" )) 
-# sample_network(r'D:\PKG',current_items,nb_sample,focal_year)
-compute_comb_score(r'D:\PKG',true_current_adj_freq,nb_sample,focal_year)
+sample_network(r'D:\PKG',current_items,unique_items,nb_sample,focal_year)
+#compute_comb_score(r'D:\PKG',true_current_adj_freq,nb_sample,var,focal_year)
 #update_paper_values(r'D:\PKG',current_items,unique_items,indicator,focal_year,focal_year)
