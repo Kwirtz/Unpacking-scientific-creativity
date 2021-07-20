@@ -22,12 +22,12 @@ for focal_year in range(2000,2004):
                    sub_var = pars[db]['j_ref']['sub_var'])
 
     docs = data.collection.find({
-        pars[db]['j_ref']['var']:{'$exists':'true'},
+        #pars[db]['j_ref']['var']:{'$exists':'true'},
         pars[db]['year_var']:{'$eq':focal_year}
         }
         )
     
-    docs = [doc for doc in tqdm.tqdm(docs)]
+    docs = [doc for doc in tqdm.tqdm(docs) if pars[db]['j_ref']['var'] in doc.keys()]
     
     pickle.dump(docs, open('D:/PKG/yearly_data/journal' + "/{}.p".format(focal_year), "wb" ) )
     

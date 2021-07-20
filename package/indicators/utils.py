@@ -55,6 +55,7 @@ def get_adjacency_matrix(unique_items,
         # adj_mat = nx.adjacency_matrix(G,nodelist=sorted(G.nodes()))
     if keep_diag == False:
         adj_mat.setdiag(0)
+    adj_mat = adj_mat.tocsr()
     adj_mat.eliminate_zeros()
     return adj_mat
 
