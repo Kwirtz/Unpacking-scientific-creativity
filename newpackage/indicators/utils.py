@@ -193,10 +193,9 @@ class Dataset:
                 self.VAR_YEAR:self.focal_year
                 })
         self.choose_path(indicator)
-        if indicator == 'atypicality':
-            self.true_adj =  pickle.load(
-                open( self.path+'/{}.p'.format(self.focal_year),
-                     "rb" )) 
+        self.true_adj =  pickle.load(
+            open( self.path+'/{}.p'.format(self.focal_year),
+                 "rb" )) 
 
         ######### Set Objects #########
         current_items = dict()
@@ -229,6 +228,10 @@ class Dataset:
     def populate_list(self,idx,current_item,unique_items,item_name,indicator,scores_adj,tomongo):
         if len(current_item)>2:
                 try:
+                    
+                    if indicator = 'atypicality':
+                        current_item = pd.DataFrame(current_item)['item'].tolist()
+                    
                     current_adj = get_adjacency_matrix(unique_items,
                                                        [current_item],
                                                        unique_pairwise = False,
@@ -257,6 +260,8 @@ class Dataset:
                                                                                               self.focal_year),
                  "rb" ) )
        
+            
+        
         docs_infos = Parallel(n_jobs=4)(
             delayed(self.populate_list)(idx,
                                     self.current_items[idx],
