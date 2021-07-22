@@ -80,7 +80,7 @@ def compute_comb_score(path2,true_current_adj_freq,nb_sample,var,focal_year):
   
 def update_paper_values(path2,current_items,unique_items,indicator,focal_year):
     comb_scores = pickle.load(
-        open(path2 + '/indicators_adj/{}'.format(var) + "/{}_{}.p".format('atypicality',focal_year),
+        open(path2 + '/indicators_adj/{}'.format(var) + "/{}_{}.p".format(indicator,focal_year),
              "rb" ) )
     docs_infos = Parallel(n_jobs=12)(
         delayed(populate_list)(idx,
