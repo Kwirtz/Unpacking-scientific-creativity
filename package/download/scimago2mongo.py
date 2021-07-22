@@ -4,7 +4,20 @@ import pymysql
 import pymongo
 import tqdm
 import re
+import pandas as pd
 
+
+# PMID YEAR ISSN
+
+pmid_issn = pd.read_csv('D:/PKG/PMID_ISSN_YEAR.csv')
+pmid_issn = pmid_issn.dropna()
+pmid_issn['id'] = pmid_issn["Journal_ISSN"] + pmid_issn["Journal_JournalIssue_PubDate_Year"].astype(int).astype(str)
+pmid_issn = pmid_issn.drop(['Journal_ISSN',
+                            'Journal_JournalIssue_PubDate_Year'],
+                           axis= 1)
+
+pmid_issn = pmid_issn.groupby('id')['PMID'].apply(list)
+pmid_issn = pmid_issn.T.to_dict()
 
 # Insert table
 
@@ -47,17 +60,15 @@ if table.startswith("b"):
         cur.execute(new_query)
         docs = cur.fetchall()
         if docs:
-            for doc in docs:
-                issn = re.sub(' ','',docs[123]['pISSN'])
-                issn  = '-'.join([issn[:4],issn[4:]])
-                pkg_doc = collection.find({'Journal_ISSN': issn,
-                                 'Journal_JournalIssue_PubDate_Year':doc['ToYear']})
-                pmids = [d['PMID'] for d in tqdm.tqdm(pkg_doc)]
+            for doc in tqdm.tqdm(docs):
+                issn = re.sub(' ','',doc['pISSN'])
+                issn_year  = '-'.join([issn[:4],issn[4:]])+str(doc['ToYear'])
                 
-                collection.update_one({"PMID":pmids}, {"$set":{table:doc}})
-                
-            with open("D:/PKG/pkg_{}.txt".format(table),"w") as f:
-                f.write(str(doc["id"]))    
+                if issn_year in pmid_issn.keys():
+                    pmids = pmid_issn[issn_year]
+                    for pmid in pmids:
+                        collection.update_one({"PMID":pmid}, {"$set":{table:doc}})
+                  
         else:
             done = True
         i += 1
@@ -69,32 +80,33 @@ pbar.close()
 
 
 
-## fro ref
 
-pbar = tqdm.tqdm()
-done = False
-i = 0
-list_articles = []
-if table.startswith("b"):
-    while done == False:
-        new_query = query % (table,process_n, (processed + process_n*i))
-        cur.execute(new_query)
-        docs = cur.fetchall()
-        if docs:
-            for doc in docs:
-                if list_articles:
-                    if list_articles[0]["PMID"] == doc["PMID"]:
-                        list_articles.append(doc)
-                        continue
-                    else:
-                        collection.find_one_and_update({"PMID":(list_articles[0]["PMID"])}, {"$set":{table:list_articles}})
-                        list_articles = [doc]
-                else:
-                    list_articles = [doc]
-            with open("D:/PKG/pkg_{}.txt".format(table),"w") as f:
-                f.write(str(doc["id"]))    
-        else:
-            done = True
-        i += 1
-        pbar.update(1)
-pbar.close()
+# ## fro ref
+
+# pbar = tqdm.tqdm()
+# done = False
+# i = 0
+# list_articles = []
+# if table.startswith("b"):
+#     while done == False:
+#         new_query = query % (table,process_n, (processed + process_n*i))
+#         cur.execute(new_query)
+#         docs = cur.fetchall()
+#         if docs:
+#             for doc in docs:
+#                 if list_articles:
+#                     if list_articles[0]["PMID"] == doc["PMID"]:
+#                         list_articles.append(doc)
+#                         continue
+#                     else:
+#                         collection.find_one_and_update({"PMID":(list_articles[0]["PMID"])}, {"$set":{table:list_articles}})
+#                         list_articles = [doc]
+#                 else:
+#                     list_articles = [doc]
+#             with open("D:/PKG/pkg_{}.txt".format(table),"w") as f:
+#                 f.write(str(doc["id"]))    
+#         else:
+#             done = True
+#         i += 1
+#         pbar.update(1)
+# pbar.close()
