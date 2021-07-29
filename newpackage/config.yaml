@@ -1,0 +1,14 @@
+client_name: mongodb://localhost:27017
+db_name : pkg
+var_year: Journal_JournalIssue_PubDate_Year
+collection_name: articles
+collection_citnet : citation_data
+var_id: PMID
+text:
+  var: a04_abstract
+j_ref:
+  var: CR_year_category
+  sub_var: journal
+mesh:
+  var: Mesh_year_categoy
+  sub_var: descUI
