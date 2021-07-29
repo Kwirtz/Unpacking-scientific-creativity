@@ -36,14 +36,14 @@ collection = mydb["articles"]
 
 table = tables[0]
     
-try:
-    with open("D:/PKG/pkg_{}.txt".format(table),"r") as f:
-        processed = int(f.read())
-except:
-    processed = 0
+# try:
+#     with open("D:/PKG/pkg_{}.txt".format(table),"r") as f:
+#         processed = int(f.read())
+# except:
+processed = 0
         
 query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
-process_n = 200000
+process_n = 1000000
 con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='wosref')
 cur = con.cursor(pymysql.cursors.DictCursor)
 
@@ -51,7 +51,7 @@ cur = con.cursor(pymysql.cursors.DictCursor)
 
 pbar = tqdm.tqdm()
 done = False
-i = 0
+i = 240
 list_articles = []
 pmid_list = []
 doc_pmid = set()
