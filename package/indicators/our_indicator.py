@@ -1,17 +1,13 @@
 import numpy as np
-import tqdm
-import itertools
-import py2neo
 import pickle
 import os
 from random import sample
-from joblib import Parallel, delayed
 from scipy.sparse import lil_matrix
-import sys
+import bz2
 
 class our_indicator:
     
-    def __init__(self, g, n, year, variable, B, weighted = True, resample = 0.95):
+    def __init__(self, g, n, year, variable, chunk, weighted = True, resample = 0.95):
         
         '''
         Description
@@ -36,7 +32,7 @@ class our_indicator:
             raise ValueError("Invalid graph. Expected graph to be undirected")
         self.g = g 
         self.n = n
-        self.B = B
+        self.chunk = chunk
         self.weighted = weighted
         self.resample = resample
         self.path = "Paper/Results/our_novelty_non_normalized/"
@@ -49,6 +45,11 @@ class our_indicator:
             os.makedirs(self.path+ str(self.variable) + "/" + str(self.year))
         if not os.path.exists(self.path+ "{}/{}/subgraph_nodes".format(self.variable,self.year)):
             os.makedirs(self.path+ "{}/{}/subgraph_nodes".format(self.variable,self.year))
+
+
+    def compressed_pickle(self, title, data):
+        with bz2.BZ2File(title + ".pbz2", "w") as f: 
+            pickle.dump(data, f)
                         
     def compute_novelty(self):
         '''
@@ -94,7 +95,7 @@ class our_indicator:
         random_nodes = sample(list(self.g.nodes()), int(len(self.g)*self.resample))
         subgraph = self.g.subgraph(random_nodes)
         subgraph_nodes = list(subgraph.nodes())
-        pickle.dump(subgraph_nodes, open( self.path + "{}/{}/subgraph_nodes/{}.p".format(self.variable,self.year,self.B), "wb" ))
+        pickle.dump(subgraph_nodes, open( self.path + "{}/{}/subgraph_nodes/{}.p".format(self.variable,self.year,self.i), "wb" ))
         self.subgraph = subgraph
 
 
@@ -119,13 +120,8 @@ class our_indicator:
         '''
         print("Create empty df ...")
         self.generate_commu_adj_matrix()
-        
-        """
-        for it in tqdm.tqdm(range(self.B)):
+        for i in self.chunk:
+            self.i = i
             self.run_iteration() 
-            self.chunk += 1
-            pickle.dump( self.df, open( self.path + "{}/{}/{}.p".format(self.variable,self.year,self.chunk), "wb" ))
-            self.generate_freq_matrix()
-        """
-        self.run_iteration() 
-        pickle.dump( self.df, open( self.path + "{}/{}/{}.p".format(self.variable,self.year,self.B), "wb" ))
+        self.compressed_pickle(title = self.path + "{}/{}/{}".format(self.variable,int(self.year),self.i), data = self.df)
+        #pickle.dump( self.df, open( self.path + "{}/{}/{}.p".format(self.variable,self.year,self.B), "wb" ))
