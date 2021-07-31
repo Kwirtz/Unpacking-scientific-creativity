@@ -1,270 +1,289 @@
 # Download the data here http://er.tacc.utexas.edu/datasets/ped
-
+# Put the data in mysql then convert mysql to pymongo using the following code
 import pymysql
 import pymongo
 import tqdm
+import re
+import ast
+import pandas as pd
+import dask.dataframe as dd
 
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
-cur = con.cursor()
-if cur.connection:
-    print("connection exists")
-
-# What's in the box ?
-
-"""
-cur = con.cursor(pymysql.cursors.DictCursor)
-query = ("SELECT * FROM a02_authorlist LIMIT 1000 OFFSET 20000000")
-cur.execute(query)
-box = cur.fetchall()
-"""
-
-# tables
-query = ("show tables")
-cur.execute(query)
-tables = list(cur.fetchall())
-tables = [table[0] for table in tables]
-
-cur = con.cursor(pymysql.cursors.DictCursor)
-query = ("SELECT * FROM a01_articles LIMIT %s OFFSET %s")
-
-client = pymongo.MongoClient('mongodb://Pierre:ilovebeta67@localhost:27017')
-mydb = client["pkg"] 
-collection = mydb["articles"]
-
-def init_create():
-
-    done = False
-    process_n = 200000
-    i = 0
-    pbar = tqdm.tqdm()
-    while done == False:
-        cur.execute(query,(process_n, (process_n*i)))
-        post = cur.fetchall()
-        if post:
-            collection.insert_many(post)
-            i += 1
-            pbar.update(1)
-        else:
-            done = True
-            
-    collection.create_index([ ("PMID",1) ])
-
-init_create()
-
-# Insert table
-
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='a03_keywordlist')
-cur = con.cursor()
-if cur.connection:
-    print("connection exists")
+class import_pkg2mongo():
     
-query = ("show tables")
-cur.execute(query)
-tables = list(cur.fetchall())
-tables = [table[0] for table in tables]
-
-client = pymongo.MongoClient('mongodb://Pierre:ilovebeta67@localhost:27017')
-mydb = client["pkg"] 
-collection = mydb["articles"]
-
-
-table = tables[0]
+    def __init__(self, pymysql_host, pymysql_user, pymysql_passwd, mongo_uri, db_name,process_n):
+        self.pymysql_host = pymysql_host
+        self.pymysql_user = pymysql_user
+        self.pymysql_passwd = pymysql_passwd
+        self.mongo_uri = mongo_uri
+        self.db_name = db_name
+        self.con = pymysql.connect(host = self.pymysql_host, user = self.pymysql_user,
+                              passwd = self.pymysql_passwd, db=self.db_name)
+        client = pymongo.MongoClient(self.mongo_uri)
+        self.mydb = client[self.db_name] 
+        self.process_n = process_n
     
-try:
-    with open("D:/kevin_data/pkg_{}.txt".format(table),"r") as f:
-        processed = int(f.read())
-except:
-    processed = 0
+    def get_tables(self):
+        cur = self.con.cursor()
+        query = ("show tables")
+        cur.execute(query)
+        tables = list(cur.fetchall())
+        self.tables = [table[0] for table in tables]
+    
+    def init_commit_article(self, file = False):
+        collection = self.mydb["articles"]
+        cur = self.con.cursor(pymysql.cursors.DictCursor)
         
-query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
-process_n = 200000
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='a03_keywordlist')
-cur = con.cursor(pymysql.cursors.DictCursor)
+        if file == False:
+            query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
+            done = False
 
-pbar = tqdm.tqdm()
-done = False
-i = 0
-list_articles = []
-if table.startswith("a"):
-    while done == False:
-        new_query = query % (table,process_n, (processed + process_n*i))
-        cur.execute(new_query)
-        docs = cur.fetchall()
-        if docs:
-            for doc in docs:
-                if list_articles:
-                    if list_articles[0]["PMID"] == doc["PMID"]:
-                        list_articles.append(doc)
-                        continue
-                    else:
-                        collection.find_one_and_update({"PMID":(list_articles[0]["PMID"])}, {"$set":{table:list_articles}})
-                        list_articles = [doc]
+            i = 0
+            pbar = tqdm.tqdm()
+            while done == False:
+                cur.execute(query,("a01_articles", self.process_n, (self.process_n*i)))
+                post = cur.fetchall()
+                if post:
+                    collection.insert_many(post)
+                    i += 1
+                    pbar.update(1)
                 else:
-                    list_articles = [doc]
-            with open("D:/kevin_data/pkg_{}.txt".format(table),"w") as f:
-                f.write(str(doc["id"]))    
+                    done = True
+            pbar.close() 
         else:
-            done = True
-        i += 1
-        pbar.update(1)
-pbar.close()
+            with open(file, encoding="utf8") as f:
+                key_list = []
+                for line in tqdm.tqdm(f):
+                    if line.startswith('  `'):
+                        key_name = re.search('`.*?`',line).group(0) 
+                        key_name = re.sub("`","",key_name)
+                        key_list.append(key_name)
+                    if line.startswith("INSERT"):
+                        docs = line.split(".xml'),")
+                        docs_cleaned = [re.sub("[()]","",doc)+".xml'" for doc in docs]
+                        docs_cleaned[0] = re.sub("INSERT INTO `A01_Articles` VALUES ","",docs_cleaned[0])
+                        docs_cleaned[-1] = re.sub(";\n.xml'","",docs_cleaned[-1])
+                        docs_cleaned = [ast.literal_eval(doc) for doc in docs_cleaned]
+                        list_of_insertion = [{key:value for key,value in zip(key_list,doc)}for doc in docs_cleaned]
+                        collection.insert_many(list_of_insertion)
+        collection.create_index([ ("PMID",1) ])
+        
+        
+    def insert_table_article(self, table,fs_file = None):
+        # import file in case of failure
+        if fs_file != None:
+            try:
+                with open(fs_file+ "/pkg_{}.txt".format(table),"r") as f:
+                    processed = int(f.read())
+            except:
+                processed = 0
 
+        collection = self.mydb["articles"]
+        cur = self.con.cursor(pymysql.cursors.DictCursor)
+        query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
 
-# create table_authors
+        
+        pbar = tqdm.tqdm()
+        done = False
+        i = 0
+        list_articles = []
+        if table.startswith("a"):
+            while done == False:
+                new_query = query % (table,self.process_n, (processed + self.process_n*i))
+                cur.execute(new_query)
+                docs = cur.fetchall()
+                if docs:
+                    for doc in docs:
+                        if list_articles:
+                            if list_articles[0]["PMID"] == doc["PMID"]:
+                                list_articles.append(doc)
+                                continue
+                            else:
+                                collection.find_one_and_update({"PMID":(list_articles[0]["PMID"])}, {"$set":{table:list_articles}})
+                                list_articles = [doc]
+                        else:
+                            list_articles = [doc]
+                    if fs_file != None:
+                        with open(fs_file+ "/pkg_{}.txt".format(table),"w") as f:
+                            f.write(str(doc["id"]))    
+                else:
+                    done = True
+                i += 1
+                pbar.update(1)
+        pbar.close()
 
-query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
-process_n = 200000
-table = "oa01_author_list"
-
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
-cur = con.cursor(pymysql.cursors.DictCursor)
-new_query = query % (table,process_n, 29000000)
-cur.execute(new_query)
-post = cur.fetchall()
-
-
-query = ("""SELECT MAX(id) FROM a02_authorlist""")
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
-cur = con.cursor(pymysql.cursors.DictCursor)
-cur.execute(query)
-post = cur.fetchall()
-
-
-
-
-# second method nosql_oriented
-
-
-
-client = pymongo.MongoClient('mongodb://Pierre:ilovebeta67@localhost:27017')
-mydb = client["pkg"] 
-collection = mydb["authors"]
-
-#collection.create_index([ ("AND_ID",1) ])
-
-query = ("""SELECT * FROM oa01_author_list LIMIT %s OFFSET %s""")
-
-process_n = 200000
-try:
-    with open("D:/kevin_data/pkg_author.txt","r") as f:
-        processed = int(f.read())
-except:
-    processed = 0
-
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
-cur = con.cursor(pymysql.cursors.DictCursor)
-
-pbar = tqdm.tqdm()
-done = False
-i = 0
-while done == False:
-    new_query = query % (process_n, (processed + process_n*i))
-    cur.execute(new_query)
-    docs = cur.fetchall()
-    if docs:
-        for doc in docs:
-            if doc["AND_ID"] == 0:
+    def init_commit_author(self, fp_csv, fs_file = None):    
+        
+        if fs_file != None:
+            try:
+                with open(fs_file+ "/pkg_author.txt","r") as f:
+                    processed = int(f.read())
+            except:
+                processed = 0
+                
+        df = dd.read_csv(fp_csv)
+        collection = self.mydb["authors"]
+        try:
+            collection.create_index([ ("AND_ID",1) ])
+        except:
+            pass
+        
+        it = 0
+        for i in tqdm.tqdm(df.iterrows()):
+            if fs_file != None:
+                if it < processed:
+                    it += 1
+                    continue
+            info = dict(i[1])
+            if info["AND_ID"] == 0:
                 continue
-            if collection.find_one_and_update({"AND_ID":doc["AND_ID"]}, {"$push":{"more_info":doc,"pmid_list":doc["PMID"]}}):
+            if collection.find_one_and_update({"AND_ID":info["AND_ID"]}, {"$push":{"more_info":info,"pmid_list":info["PMID"]}}):
                 pass
             else:
-                collection.insert_one({"AND_ID":doc["AND_ID"],"pmid_list":[doc["PMID"]],"more_info":[doc]})
-            with open("D:/kevin_data/pkg_author.txt","w") as f:
-                f.write(str(doc["id"]))
-    else:
-        done = True
-    i += 1
-    pbar.update(1)
- 
-# Insert author related tables
-
-client = pymongo.MongoClient('mongodb://Pierre:ilovebeta67@localhost:27017')
-mydb = client["pkg"] 
-collection = mydb["authors"]
-
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
-cur = con.cursor()
-if cur.connection:
-    print("connection exists")
+                collection.insert_one({"AND_ID":info["AND_ID"],"pmid_list":[info["PMID"]],"more_info":[info]})
+            if fs_file:
+                with open(fs_file+ "/pkg_author.txt","w") as f:
+                    f.write(str(i[0]))
     
-query = ("show tables")
-cur.execute(query)
-tables = list(cur.fetchall())
-tables = [table[0] for table in tables]
-
-
-
-table = tables[37]
-    
-try:
-    with open("D:/kevin_data/pkg_{}.txt".format(table),"r") as f:
-        processed = int(f.read())
-except:
-    processed = 0
+    def insert_table_author(self, fp_csv,fs_file = None):
         
-query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
-process_n = 200000
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
-cur = con.cursor(pymysql.cursors.DictCursor)
-
-pbar = tqdm.tqdm()
-done = False
-i = 0
-while done == False:
-    new_query = query % (table,process_n, (processed + process_n*i))
-    cur.execute(new_query)
-    docs = cur.fetchall()
-    if docs:
-        for doc in docs:
-            if doc["AND_ID"] != 0:
-                if collection.find_one_and_update({"AND_ID":(doc["AND_ID"])}, {"$push":{table:doc}}):
+        table_name = fp_csv.split('/')[-1].split(".")[0].lower()
+        df = dd.read_csv(fp_csv)
+        collection = self.mydb["authors"]
+        
+        if fs_file != None:
+            try:
+                with open(fs_file+ "/pkg_author.txt","r") as f:
+                    processed = int(f.read())
+            except:
+                processed = 0       
+        
+        it = 0
+        for i in tqdm.tqdm(df.iterrows()):
+            if fs_file != None:
+                if it < processed:
+                    it += 1
                     continue
+            info = dict(i[1])
+            if info["AND_ID"] == 0:
+                continue
+            if collection.find_one_and_update({"AND_ID":info["AND_ID"]}, {"$push":{table_name:info}}):
+                pass
+            else:
+                collection.find_one_and_update({"AND_ID":info["AND_ID"]}, {table_name:[info]})
+            if fs_file:
+                with open(fs_file+ "/pkg_author.txt","w") as f:
+                    f.write(str(i[0]))
+    
+    def create_issn_csv(self):
+        collection = self.mydb["articles"]
+        docs = collection.find({},no_cursor_timeout=True, batch_size=self.process_n)
+        pmid_issn_year = []
+        for doc in tqdm.tqdm(docs,desc="Reading through articles"):
+            pmid_issn_year.append({"Journal_ISSN":doc["Journal_ISSN"],
+             "Journal_JournalIssue_PubDate_Year":doc["Journal_JournalIssue_PubDate_Year"],
+             "PMID":doc["PMID"]})
+        pmid_issn_year = pd.DataFrame(pmid_issn_year)
+        pmid_issn_year.to_csv("./Paper/Data/PMID_ISSN_YEAR.csv")
+    
+    
+    def insert_scimago(self,table):
+        
+
+        collection = self.mydb["articles"]
+        cur = self.con.cursor(pymysql.cursors.DictCursor)
+        query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
+ 
+        pmid_issn = pd.read_csv('./Paper/Data/PMID_ISSN_YEAR.csv')
+        pmid_issn = pmid_issn.dropna()
+        pmid_issn['id'] = pmid_issn["Journal_ISSN"] + pmid_issn["Journal_JournalIssue_PubDate_Year"].astype(int).astype(str)
+        pmid_issn = pmid_issn.drop(['Journal_ISSN',
+                                    'Journal_JournalIssue_PubDate_Year'],
+                                   axis= 1)
+        pmid_issn = pmid_issn.groupby('id')['PMID'].apply(list)
+        pmid_issn = pmid_issn.T.to_dict()
+        
+        pbar = tqdm.tqdm()
+        done = False
+        i = 0
+        if table.startswith("b"):
+            while done == False:
+                new_query = query % (table,self.process_n, (self.process_n*i))
+                cur.execute(new_query)
+                docs = cur.fetchall()
+                if docs:
+                    for doc in tqdm.tqdm(docs):
+                        issn = re.sub(' ','',doc['pISSN'])
+                        issn_year  = '-'.join([issn[:4],issn[4:]])+str(doc['ToYear'])
+                        if issn_year in pmid_issn.keys():
+                            pmids = pmid_issn[issn_year]
+                            for pmid in pmids:
+                                collection.update_one({"PMID":pmid}, {"$set":{table:doc}})       
                 else:
-                    collection.find_one_and_update({"AND_ID":(doc["AND_ID"])}, {"$set":{table:[doc]}})
-        with open("D:/kevin_data/pkg_{}.txt".format(table),"w") as f:
-            f.write(str(doc["id"]))    
-    else:
-        done = True
-    i += 1
-    pbar.update(1)
-pbar.close()
+                    done = True
+                i += 1
+                pbar.update(1)
+        pbar.close()
+    
+    def insert_wos(self,table):
+        collection = self.mydb["articles"]
+        cur = self.con.cursor(pymysql.cursors.DictCursor)
+        query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
+        
+        pmid_issn = pd.read_csv('./Paper/Data/PMID_ISSN_YEAR.csv')
+        pmid_issn = pmid_issn.dropna()
+        pmid_issn['id'] = pmid_issn["Journal_ISSN"] + pmid_issn["Journal_JournalIssue_PubDate_Year"].astype(int).astype(str)
+        pmid_issn = pmid_issn.drop(['Journal_ISSN',
+                                    'Journal_JournalIssue_PubDate_Year'],
+                                   axis= 1)
+        pmid_issn = pmid_issn.groupby('id')['PMID'].apply(list)
+        pmid_issn = pmid_issn.T.to_dict()
 
-#collection.update_many({}, {'$unset': {table:1}})
-#%% Trying to understand the fuck is going on
+        pbar = tqdm.tqdm()
+        done = False
+        i = 240
+        list_articles = []
+        pmid_list = []
+        doc_pmid = set()
+        if table.startswith("c"):
+            while done == False:
+                new_query = query % (table,self.process_n, (self.process_n*i))
+                cur.execute(new_query)
+                docs = cur.fetchall()
+                if docs:
+                    for doc in tqdm.tqdm(docs):
+                        doc_pmid.update([doc['PMID']])
+                        if len(doc_pmid) == 1:
+                            pmid = list(doc_pmid)[0]
+                            pmid_list.append(doc['RefArticleId'])
+                            try:
+                                info = pmid_issn[doc['RefArticleId']]
+                                list_articles.append(info)
+                            except:
+                                pass
+                        else:
+                            collection.update_one({"PMID":pmid},
+                                                      {"$set":{table:list_articles,
+                                                                'refs_pmid_wos':pmid_list}})
+        
+                            doc_pmid = set()
+                            list_articles = []
+                            pmid_list = []
+                else:
+                    done = True
+                i += 1
+                pbar.update(1)
+        pbar.close()
 
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
-cur = con.cursor(pymysql.cursors.DictCursor)
+item = import_pkg2mongo(pymysql_host='localhost', pymysql_user="root", pymysql_passwd="root",
+                 mongo_uri = 'mongodb://localhost:27017', db_name = "pkg" ,process_n = 100000)
 
-for table in tables:
-    query = ("""SHOW KEYS FROM %s WHERE Key_name = 'PRIMARY'""")
-    new_query = query % (table)
-    cur.execute(new_query)
-    post = cur.fetchall()
-    print(post) 
+item.get_tables()
 
-# inspect mongodb
-docs = collection.find({'a04_abstract': {"$exists": 1}}).sort("PMID",pymongo.DESCENDING)
-doc = next(docs)
-n = 0
-for doc in tqdm.tqdm(docs):
-    pmid = ["PMID"]
-    break
+item.insert_table_article(item.tables[11],fs_file = "D:/kevin_data")
+#missing 5,8,2,13,4,6
 
-collection.index_information()
-{"$and"'a14_referencelist.1': {"$exists": 1}}
-{"$and":[ {'a14_referencelist.1': {"$exists": 1}}, {'a13_affiliationlist.1': {"$exists": 1}}]}
+item.insert_table_author(fp_csv="G:/backup_paper2/pkg/OA04_Affiliations/OA04_Affiliations.csv",
+                         fs_file = "D:/kevin_data")
 
-# inspect mysql
-
-con = pymysql.connect(host = 'localhost', user = 'root',passwd = 'root', db='pkg')
-cur = con.cursor(pymysql.cursors.DictCursor)
-query = ("""SELECT * FROM c01_articles_simple LIMIT 10""")
-cur.execute(query)
-docs = cur.fetchall()
-
-cur = con.cursor(pymysql.cursors.DictCursor)
-query = ("SELECT COUNT(*) FROM a03_keywordlist")
-cur.execute(query)
-box = cur.fetchall()
-
+item.insert_scimago(item.tables[-2])
 
