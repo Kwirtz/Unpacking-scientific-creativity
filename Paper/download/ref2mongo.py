@@ -9,12 +9,13 @@ import pandas as pd
 
 # PMID YEAR ISSN
 
-pmid_issn = pd.read_csv('D:/PKG/PMID_ISSN_YEAR.csv')
+pmid_issn = pd.read_csv('D:/PKG/final_folder_260721/Data/PMID_ISSN_YEAR.csv')
 pmid_issn = pmid_issn.dropna()
-
 pmid_issn = pmid_issn.set_index('PMID')
 pmid_issn = pmid_issn.rename(columns={'Journal_ISSN':'item',
                                       'Journal_JournalIssue_PubDate_Year':'year'})
+
+pmid_issn = pmid_issn[~pmid_issn.year.isin([''])]
 pmid_issn['year'] = pmid_issn.year.astype(int)
 pmid_issn = pmid_issn.T.to_dict()
 
@@ -32,7 +33,7 @@ tables = [table[0] for table in tables]
 
 client = pymongo.MongoClient('mongodb://Pierre:ilovebeta67@localhost:27017')
 mydb = client["PKG"] 
-collection = mydb["articles"]
+collection = mydb["articles_test"]
 
 table = tables[0]
     
@@ -51,7 +52,7 @@ cur = con.cursor(pymysql.cursors.DictCursor)
 
 pbar = tqdm.tqdm()
 done = False
-i = 240
+i = 0
 list_articles = []
 pmid_list = []
 doc_pmid = set()
@@ -76,9 +77,15 @@ if table.startswith("c"):
                                               {"$set":{table:list_articles,
                                                         'refs_pmid_wos':pmid_list}})
 
-                    doc_pmid = set()
+                    doc_pmid = set([doc['PMID']])
                     list_articles = []
-                    pmid_list = []
+                    pmid_list = [doc['RefArticleId']]
+                    pmid = list(doc_pmid)[0]
+                    try:
+                        info = pmid_issn[doc['RefArticleId']]
+                        list_articles.append(info)
+                    except:
+                        pass
         else:
             done = True
         i += 1
