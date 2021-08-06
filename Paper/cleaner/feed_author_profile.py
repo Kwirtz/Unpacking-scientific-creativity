@@ -12,7 +12,7 @@ parser.add_argument('-from_')
 parser.add_argument('-to_')
 args = parser.parse_args()
 
-def get_author_profil(doc,client_name,db_name,collection_articles,collection_authors,var_year,var_id,var_auth_id):
+def get_author_profil(and_id,client_name,db_name,collection_articles,collection_authors,var_year,var_id,var_auth_id):
     """
     Description
     -----------
@@ -47,7 +47,7 @@ def get_author_profil(doc,client_name,db_name,collection_articles,collection_aut
     db = client[db_name]
     collection_authors = db[collection_authors]
     collection_articles = db[collection_articles]
-    # doc = collection_authors.find({var_auth_id:and_id})[0]
+    doc = collection_authors.find({var_auth_id:and_id})[0]
     
     
     infos = list()
@@ -100,14 +100,14 @@ var_auth_id = 'AND_ID'
 
 client = pymongo.MongoClient(client_name)
 db = client[db_name]
-collection_authors = db[collection_authors]
-collection_articles = db[collection_articles]
-docs = collection_authors.find(no_cursor_timeout  = True).sort([(var_auth_id, pymongo.ASCENDING)])
-and_ids = [doc[var_auth_id] for doc in tqdm.tqdm(docs)]
+collection_auth = db[collection_authors]
+collection_art = db[collection_articles]
+and_ids = pd.read_json(r'D:\PKG\old data\authors_id.json')
+and_ids = and_ids['AND_ID'].tolist()
 from_ = int(args.from_)
 to_ = int(args.to_)      
 
-for doc in tqdm.tqdm(docs[from_:to_]):
+for doc in tqdm.tqdm(and_ids[from_:to_]):
     get_author_profil(doc,
                       client_name,
                       db_name,
@@ -116,5 +116,12 @@ for doc in tqdm.tqdm(docs[from_:to_]):
                       var_year,
                       var_id,
                       var_auth_id)
-# Parallel(n_jobs=35)(delayed(get_author_profil)(doc)for doc in tqdm.tqdm(docs))
-   
+# Parallel(n_jobs=5)(delayed(get_author_profil)(and_id,
+#                                               client_name,
+#                                               db_name,
+#                                               collection_articles,
+#                                               collection_authors,
+#                                               var_year,
+#                                               var_id,
+#                                               var_auth_id)for and_id in tqdm.tqdm(and_ids))
+                           
