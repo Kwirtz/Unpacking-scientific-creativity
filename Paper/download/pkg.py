@@ -279,7 +279,7 @@ item = import_pkg2mongo(pymysql_host='localhost', pymysql_user="root", pymysql_p
 
 item.get_tables()
 
-item.insert_table_article(item.tables[11],fs_file = "D:/kevin_data")
+item.insert_table_article(item.tables[4],fs_file = "D:/kevin_data")
 #missing 5,8,2,13,4,6
 
 item.insert_table_author(fp_csv="G:/backup_paper2/pkg/OA04_Affiliations/OA04_Affiliations.csv",
