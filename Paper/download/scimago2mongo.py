@@ -9,7 +9,8 @@ import pandas as pd
 
 # PMID YEAR ISSN
 
-pmid_issn = pd.read_csv('D:/PKG/PMID_ISSN_YEAR.csv')
+
+pmid_issn = pd.read_csv('D:/PKG/final_folder_260721/Data/PMID_ISSN_YEAR.csv')
 pmid_issn = pmid_issn.dropna()
 pmid_issn['id'] = pmid_issn["Journal_ISSN"] + pmid_issn["Journal_JournalIssue_PubDate_Year"].astype(int).astype(str)
 pmid_issn = pmid_issn.drop(['Journal_ISSN',
