@@ -120,7 +120,7 @@ class import_pkg2mongo():
             except:
                 processed = 0
                 
-        df = dd.read_csv(fp_csv)
+        df = pd.read_csv(fp_csv)
         collection = self.mydb["authors"]
         try:
             collection.create_index([ ("AND_ID",1) ])
@@ -128,12 +128,17 @@ class import_pkg2mongo():
             pass
         
         it = 0
-        for i in tqdm.tqdm(df.iterrows()):
+        for id_, PMID, AND_ID, AuOrder, LastName, ForeName, Initials, Suffix, AuNum,\
+            PubYear, BeginYear in tqdm.tqdm(zip(df["id"],df["PMID"],df["AND_ID"],df["AuOrder"],
+                                             df["LastName"],df["ForeName"],df["Initials"],
+                                             df["Suffix"],df["AuNum"],df["PubYear"],df["BeginYear"])):
             if fs_file != None:
                 if it < processed:
                     it += 1
-                    continue
-            info = dict(i[1])
+                    continue 
+            info = {"id":id_, "PMID":PMID, "AND_ID":AND_ID, "AuOrder":AuOrder, "LastName":LastName,
+                    "ForeName":ForeName, "Initials":Initials, "Suffix":Suffix,
+                    "AuNum":AuNum,"PubYear":PubYear, "BeginYear":BeginYear}
             if info["AND_ID"] == 0:
                 continue
             if collection.find_one_and_update({"AND_ID":info["AND_ID"]}, {"$push":{"more_info":info,"pmid_list":info["PMID"]}}):
@@ -142,7 +147,7 @@ class import_pkg2mongo():
                 collection.insert_one({"AND_ID":info["AND_ID"],"pmid_list":[info["PMID"]],"more_info":[info]})
             if fs_file:
                 with open(fs_file+ "/pkg_author.txt","w") as f:
-                    f.write(str(i[0]))
+                    f.write(str(info["id"]))                   
     
     def insert_table_author(self, fp_csv,fs_file = None):
         
@@ -171,8 +176,9 @@ class import_pkg2mongo():
             else:
                 collection.find_one_and_update({"AND_ID":info["AND_ID"]}, {table_name:[info]})
             if fs_file:
-                with open(fs_file+ "/pkg_author.txt","w") as f:
-                    f.write(str(i[0]))
+                it += 1
+                with open(fs_file+ "/pkg_author.txt","w+") as f:
+                    f.write(str(it))
     
     def create_issn_csv(self):
         collection = self.mydb["articles"]
@@ -240,7 +246,7 @@ class import_pkg2mongo():
 
         pbar = tqdm.tqdm()
         done = False
-        i = 240
+        i = 0
         list_articles = []
         pmid_list = []
         doc_pmid = set()
@@ -277,13 +283,28 @@ class import_pkg2mongo():
 item = import_pkg2mongo(pymysql_host='localhost', pymysql_user="root", pymysql_passwd="root",
                  mongo_uri = 'mongodb://localhost:27017', db_name = "pkg" ,process_n = 100000)
 
-item.get_tables()
+# insert table from sql txt file
+#item.init_commit_article()
 
-item.insert_table_article(item.tables[4],fs_file = "D:/kevin_data")
-#missing 5,8,2,13,4,6
+# Insert table by table
+#item.get_tables()
+#item.insert_table_article(item.tables[5],fs_file = "D:/kevin_data")
+# Insert scimago
+#item.insert_scimago(item.tables[-2])
+# Insert wos
+#item.insert_wos(item.tables[-2])
 
+#missing item.tables[3] 3200422, item.tables[12] 8905589, item.tables[7] 13504294, item.tables[5] 12800295
+
+# Create collection with authors from csv
+
+item.init_commit_author(fp_csv="G:/backup_paper2/pkg/OA01_Author_List/OA01_Author_List.csv",
+                        fs_file = "D:/kevin_data")
+
+# Insert author table from csv
 item.insert_table_author(fp_csv="G:/backup_paper2/pkg/OA04_Affiliations/OA04_Affiliations.csv",
                          fs_file = "D:/kevin_data")
 
-item.insert_scimago(item.tables[-2])
+
+
 
