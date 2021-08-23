@@ -289,12 +289,13 @@ item = import_pkg2mongo(pymysql_host='localhost', pymysql_user="root", pymysql_p
 # Insert table by table
 #item.get_tables()
 #item.insert_table_article(item.tables[5],fs_file = "D:/kevin_data")
+#item.tables[5] 156595714
+
 # Insert scimago
 #item.insert_scimago(item.tables[-2])
 # Insert wos
 #item.insert_wos(item.tables[-2])
 
-#missing item.tables[3] 3200422, item.tables[12] 8905589, item.tables[7] 13504294, item.tables[5] 12800295
 
 # Create collection with authors from csv
 
@@ -302,8 +303,8 @@ item.init_commit_author(fp_csv="G:/backup_paper2/pkg/OA01_Author_List/OA01_Autho
                         fs_file = "D:/kevin_data")
 
 # Insert author table from csv
-item.insert_table_author(fp_csv="G:/backup_paper2/pkg/OA04_Affiliations/OA04_Affiliations.csv",
-                         fs_file = "D:/kevin_data")
+#item.insert_table_author(fp_csv="G:/backup_paper2/pkg/OA04_Affiliations/OA04_Affiliations.csv",
+ #                        fs_file = "D:/kevin_data")
 
 
 
