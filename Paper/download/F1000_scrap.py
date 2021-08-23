@@ -25,9 +25,8 @@ class dl_f1000():
         options.headless = True
         self.driver = webdriver.Firefox()
 
-    def clean_date(date,month_dict):
-        month_dict = {month: index for index, month in enumerate(calendar.month_name) if month}
-        month_dict_abbr = {month: index for index, month in enumerate(calendar.month_abbr) if month}
+    def clean_date(self,date):
+        month_dict = {month: index for index, month in enumerate(calendar.month_abbr) if month}
         date = date.split(" ")
         day = re.sub("[a-z]*","",date[0])
         month = str(month_dict[date[1]])
@@ -81,20 +80,20 @@ class dl_f1000():
         self.driver.find_element_by_xpath("//input[@value='Sign in']").click()
     
     def get_infos_utils(self, url):
-        
+        collection = self.mydb["all"]        
         self.driver.get(url)
         recommendations = self.driver.find_elements(By.XPATH, "//article[@class='recommendation']")
         list_reco = {}
         list_reco["Recommendations"] = {}
         i = 0
         for reco in recommendations:
+            WebDriverWait(self.driver, 10).until(lambda driver: self.driver.find_elements(By.XPATH, ".//div[@class='recommendations-badge']"))
             cats = [cat.text for cat in reco.find_elements(By.XPATH,".//div[@class='classifications']/span")]
             rating = reco.find_element(By.XPATH,".//span[@class='rating-label']").text
             date = reco.find_element(By.XPATH,".//span[@class='recommendation-date']").text
-            unix_date = clean_date(date)
+            unix_date = self.clean_date(date)
             text = reco.find_element(By.XPATH,".//section[@class='recommendation-content']/p").text
             authors = reco.find_elements(By.XPATH,".//div[contains(@class,'member-box recommending-member')]")
-            j = 0
             authors_to_insert = []
             for author in authors:
                 author_name = author.find_element(By.XPATH,".//a[@class='member-name']").text
@@ -113,11 +112,18 @@ class dl_f1000():
             try:
                 list_reco["PMID"] = (int(element_to_hover_over.find_element(By.XPATH,"./div").get_attribute("data-pmid")))
             except:
-                continue    
-            hover = ActionChains(self.driver).move_to_element(element_to_hover_over)
-            hover.perform()
-            list_reco["global_score"] = float(element_to_hover_over.find_element(By.XPATH,".//span[@class='sw3bb7a']").text)
-            list_reco["RCR_WSS"] = [i.text for i in element_to_hover_over.find_elements(By.XPATH,".//span[@class='bzytydn']//span/strong")]
+                continue
+            try:
+                hover = ActionChains(self.driver).move_to_element(element_to_hover_over)
+                hover.perform()
+                WebDriverWait(self.driver, 10).until(lambda driver: self.driver.find_elements(By.XPATH, ".//span[@class='sw3bb7a']"))
+            except Exception as e:
+                print(str(e))
+            try:
+                list_reco["global_score"] = float(element_to_hover_over.find_element(By.XPATH,".//span[@class='sw3bb7a']").text)
+                list_reco["RCR_WSS"] = [i.text for i in element_to_hover_over.find_elements(By.XPATH,".//span[@class='bzytydn']//span/strong")]
+            except Exception as e:
+                print(str(e))
             list_reco["Recommendations"][str(i)] = {"categories":cats,"rating":rating,"date":unix_date,"text":text,
                                  "authors":authors_to_insert}
             i += 1
@@ -130,7 +136,8 @@ class dl_f1000():
             try:
                 with open(fs_file+ "/F1000_lastit.txt","r") as f:
                     processed = int(f.read())
-            except:
+            except Exception as e:
+                print(str(e))
                 processed = 0      
                 
         collection = self.mydb["hrefs"]
@@ -151,8 +158,9 @@ class dl_f1000():
 instance = dl_f1000(username = "bot_alfred@outlook.fr", password = "Bot012345678914061923",
          mongo_uri = 'mongodb://localhost:27017', db_name= "F1000")
 # First get href
-instance.get_hrefs_all()
+#instance.get_hrefs_all()
 # Connect to go paper by paper
 instance.connect_driver()
 # Iterate through hrefs
 instance.get_infos(fs_file = "D:/kevin_data")
+
