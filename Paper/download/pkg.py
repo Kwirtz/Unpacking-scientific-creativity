@@ -6,7 +6,6 @@ import tqdm
 import re
 import ast
 import pandas as pd
-import dask.dataframe as dd
 
 class import_pkg2mongo():
     
@@ -152,12 +151,12 @@ class import_pkg2mongo():
     def insert_table_author(self, fp_csv,fs_file = None):
         
         table_name = fp_csv.split('/')[-1].split(".")[0].lower()
-        df = dd.read_csv(fp_csv)
+        df = pd.read_csv(fp_csv)
         collection = self.mydb["authors"]
         
         if fs_file != None:
             try:
-                with open(fs_file+ "/pkg_author.txt","r") as f:
+                with open(fs_file+ "/{}.txt".format(table_name), "r") as f:
                     processed = int(f.read())
             except:
                 processed = 0       
@@ -174,10 +173,10 @@ class import_pkg2mongo():
             if collection.find_one_and_update({"AND_ID":info["AND_ID"]}, {"$push":{table_name:info}}):
                 pass
             else:
-                collection.find_one_and_update({"AND_ID":info["AND_ID"]}, {table_name:[info]})
+                collection.insert_one({"AND_ID":info["AND_ID"]}, {table_name:[info]})
             if fs_file:
                 it += 1
-                with open(fs_file+ "/pkg_author.txt","w+") as f:
+                with open(fs_file+ "/{}.txt".format(table_name),"w+") as f:
                     f.write(str(it))
     
     def create_issn_csv(self):
@@ -287,8 +286,8 @@ item = import_pkg2mongo(pymysql_host='localhost', pymysql_user="root", pymysql_p
 #item.init_commit_article()
 
 # Insert table by table
-#item.get_tables()
-#item.insert_table_article(item.tables[5],fs_file = "D:/kevin_data")
+item.get_tables()
+item.insert_table_article(item.tables[5],fs_file = "D:/kevin_data")
 #item.tables[5] 156595714
 
 # Insert scimago
@@ -299,13 +298,63 @@ item = import_pkg2mongo(pymysql_host='localhost', pymysql_user="root", pymysql_p
 
 # Create collection with authors from csv
 
-item.init_commit_author(fp_csv="G:/backup_paper2/pkg/OA01_Author_List/OA01_Author_List.csv",
-                        fs_file = "D:/kevin_data")
+#item.init_commit_author(fp_csv="G:/backup_paper2/pkg/OA01_Author_List/OA01_Author_List.csv",
+ #                       fs_file = "D:/kevin_data")
 
 # Insert author table from csv
-#item.insert_table_author(fp_csv="G:/backup_paper2/pkg/OA04_Affiliations/OA04_Affiliations.csv",
- #                        fs_file = "D:/kevin_data")
+item.insert_table_author(fp_csv="G:/backup_paper2/pkg/OA05_Researcher_Employment/OA05_Researcher_Employment.csv",
+                         fs_file = "D:/kevin_data")
+
+
+#
+"""
+fp_csv="G:/backup_paper2/pkg/OA04_Affiliations/OA04_Affiliations.csv"
+fs_file = "D:/kevin_data"
+
+        
+table_name = fp_csv.split('/')[-1].split(".")[0].lower()
+client = pymongo.MongoClient('mongodb://localhost:27017')
+mydb = client["pkg"] 
+collection = mydb["authors"]
+
+if fs_file != None:
+    try:
+        with open(fs_file+ "/{}.txt".format(table_name), "r") as f:
+            processed = int(f.read())
+    except:
+        processed = 0
+
+
+columns = pd.read_csv(fp_csv,nrows=1).columns
+df = pd.read_csv(fp_csv,skiprows=processed,header=0)
+df.columns = columns
+for id_, PMID, AND_ID, AffiliationOrder, Affiliation, Department, Institution, Email, ZipCode,\
+    Location, Country, City, State, AffiliationType ,Latitude, Longitude, Fips in tqdm.tqdm(zip(df["id"],df["PMID"],df["AND_ID"],df["AffiliationOrder"],
+                                     df["Affiliation"],df["Department"],df["Institution"],
+                                     df["Email"],df["ZipCode"],df["Location"],df["Country"],
+                                     df["City"],df["State"],df["AffiliationType"],df["Latitude"],
+                                     df["Longitude"],df["Fips"])):
+    info = {"PMID":PMID, "AND_ID":AND_ID, "Affiliation":Affiliation,
+            "Country":Country, "City":City,
+            "AffiliationType":AffiliationType, "Latitude":Latitude, "Longitude":Longitude}
+    if info["AND_ID"] == 0:
+        continue
+    if collection.find_one_and_update({"AND_ID":info["AND_ID"]}, {"$push":{table_name:info}}):
+        pass
+    else:
+        collection.insert_one({"AND_ID":info["AND_ID"]}, {table_name:[info]})
+    if fs_file:
+        processed += 1
+        with open(fs_file+ "/{}.txt".format(table_name),"w+") as f:
+            f.write(str(processed))
 
 
 
+    info = {"id":id_, "PMID":PMID, "AND_ID":AND_ID, "AffiliationOrder":AffiliationOrder, "Affiliation":Affiliation,
+            "Department":Department, "Institution":Institution, "Email":Email,"ZipCode":ZipCode,
+            "Location":Location, "Country":Country, "City":City,"State":State,
+            "AffiliationType":AffiliationType, "Latitude":Latitude, "Longitude":Longitude,"Fips":Fips}
+    
+"""
 
+#collection.update({}, {'$unset': {'oa04_affiliations':1}}, multi=True)
