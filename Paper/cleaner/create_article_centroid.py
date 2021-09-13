@@ -21,7 +21,7 @@ db= 'pkg'
 
 nlp = spacy.load("C:/Users/Beta/Documents/GitHub/Taxonomy-of-novelty/en_core_sci_lg-0.4.0/en_core_sci_lg/en_core_sci_lg-0.4.0")
 
-def get_articles_centroid(pmid_start,chunk_size):
+def get_articles_centroid(pmid_start,chunk_size,nlp):
     client = pymongo.MongoClient(pars['client_name'])
     db = client['PKG']
     collection = db['articles']
@@ -51,5 +51,5 @@ def get_articles_centroid(pmid_start,chunk_size):
         
 end = pmid_start+1000*4000
 for pmid in tqdm.tqdm(range(pmid_start,end,1000)):
-    get_articles_centroid(pmid,1000)
+    get_articles_centroid(pmid,1000,nlp)
 
