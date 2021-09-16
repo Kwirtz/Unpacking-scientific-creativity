@@ -38,3 +38,4 @@ data = novelpy.utils.run_indicator_tools.create_output(client_name = 'mongodb://
 
 data.get_data()
 data.update_paper_values()
+
