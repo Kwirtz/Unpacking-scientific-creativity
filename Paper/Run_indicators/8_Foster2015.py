@@ -6,7 +6,7 @@ import pickle
 import networkx as nx
 
 for focal_year in tqdm.tqdm(range(2000,2016)):
-    data = novelpy.indicators.utils.create_output(client_name = 'mongodb://localhost:27017', 
+    data = novelpy.utils.run_indicator_tools.create_output(client_name = 'mongodb://localhost:27017', 
                    db_name =  'PKG',
                    collection_name = 'articles',
                    var_id = 'PMID',
@@ -27,7 +27,7 @@ for focal_year in tqdm.tqdm(range(2000,2016)):
 
 focal_year = 2000
 
-data = novelpy.indicators.utils.create_output(client_name = 'mongodb://localhost:27017', 
+data = novelpy.utils.run_indicator_tools.create_output(client_name = 'mongodb://localhost:27017', 
                db_name =  'pkg',
                collection_name = 'articles',
                var = 'c04_referencelist',
@@ -38,5 +38,3 @@ data = novelpy.indicators.utils.create_output(client_name = 'mongodb://localhost
 
 data.get_data()
 data.update_paper_values()
-
-
