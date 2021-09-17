@@ -236,11 +236,11 @@ class import_pkg2mongo():
         
         pmid_issn = pd.read_csv('./Paper/Data/PMID_ISSN_YEAR.csv')
         pmid_issn = pmid_issn.dropna()
-        pmid_issn['id'] = pmid_issn["Journal_ISSN"] + pmid_issn["Journal_JournalIssue_PubDate_Year"].astype(int).astype(str)
-        pmid_issn = pmid_issn.drop(['Journal_ISSN',
-                                    'Journal_JournalIssue_PubDate_Year'],
-                                   axis= 1)
-        pmid_issn = pmid_issn.groupby('id')['PMID'].apply(list)
+        
+        pmid_issn = pmid_issn.set_index('PMID')
+        pmid_issn = pmid_issn.rename(columns={'Journal_ISSN':'item',
+                                              'Journal_JournalIssue_PubDate_Year':'year'})
+        pmid_issn['year'] = pmid_issn.year.astype(int)
         pmid_issn = pmid_issn.T.to_dict()
 
         pbar = tqdm.tqdm()
