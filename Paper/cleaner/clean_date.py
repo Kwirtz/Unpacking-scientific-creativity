@@ -7,12 +7,12 @@ import calendar
 import re
 
 with open("mongo_config.yaml", "r") as infile:
-    pars = yaml.safe_load(infile)['PC_Kevin']
-client_name = pars["pymongo_connection"]
+    pars = yaml.safe_load(infile)['PC_BETA']
+client_name = pars["client_name"]
 
 
-client = pymongo.MongoClient('mongodb://localhost:27017')
-db = client['pkg']
+client = pymongo.MongoClient(client_name)
+db = client['PKG']
 collection = db['articles']
 
 
@@ -37,7 +37,7 @@ def create_year(collection, index = False):
     if index == True:  
         collection.create_index([ ("year",1) ])
 
-create_year(collection)
+create_year(collection,index = True)
 
 
 """
