@@ -6,21 +6,22 @@ import pickle
 import networkx as nx
 
 for focal_year in tqdm.tqdm(range(2000,2016)):
-    data = novelpy.utils.run_indicator_tools.create_output(client_name = 'mongodb://localhost:27017', 
+    companion = novelpy.utils.run_indicator_tools.create_output(client_name = 'mongodb://localhost:27017', 
                    db_name =  'PKG',
                    collection_name = 'articles',
-                   var_id = 'PMID',
-                   var_year = 'Journal_JournalIssue_PubDate_Year',
                    var = 'c04_referencelist',
-                   sub_var = 'item',
+                   var_id = 'PMID',
+                   var_year = 'year',
+                   indicator = "foster",
                    focal_year = focal_year)
-    
-    g = nx.from_scipy_sparse_matrix(cooc_mat, edge_attribute='weight')
-    Foster = novelpy.indicators.Foster2015(g=g, year = focal_year, variable = "c04_referencelist", community_algorithm = "Louvain")
+    companion.get_data()
+    g = nx.from_scipy_sparse_matrix(companion.current_adj, edge_attribute='weight')
+    Foster = novelpy.indicators.Foster2015(g=g, year = focal_year,
+                                           variable = "c04_referencelist",
+                                           community_algorithm = "Louvain")
     Foster.get_indicator()
-    path = "Data/c04_referencelist/weighted_network_self_loop/{}.p".format(focal_year)    
-    cooc_mat += pickle.load(open(path, "rb"))
-
+    companion.update_paper_values()
+    
 
 
 # testing stuff
