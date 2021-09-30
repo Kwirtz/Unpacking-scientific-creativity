@@ -16,7 +16,7 @@ class import_pkg2mongo():
         self.mongo_uri = mongo_uri
         self.db_name = db_name
         self.con = pymysql.connect(host = self.pymysql_host, user = self.pymysql_user,
-                              passwd = self.pymysql_passwd, db=self.db_name)
+                              passwd = self.pymysql_passwd, db='wosref')
         client = pymongo.MongoClient(self.mongo_uri)
         self.mydb = client[self.db_name] 
         self.process_n = process_n
@@ -198,7 +198,7 @@ class import_pkg2mongo():
         cur = self.con.cursor(pymysql.cursors.DictCursor)
         query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
  
-        pmid_issn = pd.read_csv('./Paper/Data/PMID_ISSN_YEAR.csv')
+        pmid_issn = pd.read_csv('./Data/PMID_ISSN_YEAR.csv')
         pmid_issn = pmid_issn.dropna()
         pmid_issn['id'] = pmid_issn["Journal_ISSN"] + pmid_issn["Journal_JournalIssue_PubDate_Year"].astype(int).astype(str)
         pmid_issn = pmid_issn.drop(['Journal_ISSN',
@@ -234,7 +234,7 @@ class import_pkg2mongo():
         cur = self.con.cursor(pymysql.cursors.DictCursor)
         query = ("""SELECT * FROM %s LIMIT %s OFFSET %s""")
         
-        pmid_issn = pd.read_csv('./Paper/Data/PMID_ISSN_YEAR.csv')
+        pmid_issn = pd.read_csv('./Data/PMID_ISSN_YEAR.csv')
         pmid_issn = pmid_issn.dropna()
         
         pmid_issn = pmid_issn.set_index('PMID')
@@ -270,9 +270,9 @@ class import_pkg2mongo():
                                                       {"$set":{table:list_articles,
                                                                 'refs_pmid_wos':pmid_list}})
         
-                            doc_pmid = set()
-                            list_articles = []
-                            pmid_list = []
+                            doc_pmid = set(doc['PMID'])
+                            list_articles = [pmid_issn[doc['RefArticleId']]]
+                            pmid_list = [doc['RefArticleId']]
                 else:
                     done = True
                 i += 1
@@ -280,7 +280,8 @@ class import_pkg2mongo():
         pbar.close()
 
 item = import_pkg2mongo(pymysql_host='localhost', pymysql_user="root", pymysql_passwd="root",
-                 mongo_uri = 'mongodb://localhost:27017', db_name = "pkg" ,process_n = 100000)
+                 mongo_uri = 'mongodb://Pierre:ilovebeta67@localhost:27017/',
+                 db_name = "PKG" ,process_n = 1000000)
 
 # insert table from sql txt file
 #item.init_commit_article()
@@ -293,7 +294,7 @@ item.insert_table_article(item.tables[5],fs_file = "D:/kevin_data")
 # Insert scimago
 #item.insert_scimago(item.tables[-2])
 # Insert wos
-#item.insert_wos(item.tables[-2])
+item.insert_wos(item.tables[0])
 
 
 # Create collection with authors from csv
@@ -357,4 +358,4 @@ for id_, PMID, AND_ID, AffiliationOrder, Affiliation, Department, Institution, E
     
 """
 
-#collection.update({}, {'$unset': {'oa04_affiliations':1}}, multi=True)
+collection.update({}, {'$unset': {'c04_referencelist':1}}, multi=True)
