@@ -133,3 +133,4 @@ dmypy.json
 .pyre/
 Paper/Data/f1000_docs.zip
 *.txt
+*.json
