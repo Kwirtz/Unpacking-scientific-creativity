@@ -5,17 +5,18 @@ with open(r"C:\Users\Beta\Documents\GitHub\Taxonomy-of-novelty\mongo_config.yaml
     pars = yaml.safe_load(infile)['PC_BETA']
 
 for focal_year in tqdm.tqdm(range(2007,2016)):
-        
-    data = Dataset(client_name = pars['client_name'], 
+    
+    companion = novelpy.utils.run_indicator_tools.create_output(client_name = pars['client_name'], 
                    db_name =  'PKG',
-                   collection_name = 'articles_test',
+                   collection_name = 'articles',
+                   var = 'a06_meshheadinglist',
+                   sub_var = "DescriptorName_UI",
                    var_id = 'PMID',
-                   var_year = 'Journal_JournalIssue_PubDate_Year',
-                   var = 'c04_referencelist',
-                   sub_var = 'item',
+                   var_year = 'year',
+                   indicator = "novelty",
                    focal_year = focal_year)
     
-    data.get_items(indicator = 'novelty')
+    companion.get_data()
     
     novelty = Novelty(var = data.VAR,
                             var_year = 'Journal_JournalIssue_PubDate_Year',
@@ -25,3 +26,5 @@ for focal_year in tqdm.tqdm(range(2007,2016)):
     
     novelty.get_matrices_sums()
     novelty.compute_comb_score()
+
+    companion.update_paper_values()
