@@ -22,5 +22,5 @@ for doc in tqdm.tqdm(docs):
     if 'a02_authorlist' in doc.keys() and doc['year'] in range(2000,2011):
         for aut in doc['a02_authorlist']:
             author_list.update({aut['AID']})
-pickle.dump(authors_list,open(r'C:\Users\Beta\Documents\GitHub\Taxonomy-of-novelty\Data\authors_list_2000_2010.p' ,'wb'))
+pickle.dump(author_list,open(r'C:\Users\Beta\Documents\GitHub\Taxonomy-of-novelty\Data\authors_list_2000_2010.p' ,'wb'))
 
