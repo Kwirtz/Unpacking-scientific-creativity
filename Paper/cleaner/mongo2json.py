@@ -23,33 +23,36 @@ def mongo2json(URI,db_name,collection_name, var):
       
     for year in tqdm.tqdm(years):
         docs = collection.find({"year":year,var:{"$exists":True}},{"_id":0})
-        with open(path + "/{}.json".format(year), 'w') as outfile:
-            json.dump(list(docs), outfile)
+        to_insert = list(docs)
+        if to_insert == []:
+            continue
+        else:
+            with open(path + "/{}.json".format(year), 'w') as outfile:
+                json.dump(to_insert, outfile)
         
 mongo2json(URI = "mongodb://localhost:27017", db_name = 'novelty', collection_name = 'references', var = 'c04_referencelist')
 #collection.create_index([("year",1)])
 
 # result2mongo
 
-Client = pymongo.MongoClient("mongodb://localhost:27017")
-db = Client["pkg"]
-collection = db["output"]
+def json2mongo(URI,db_name,collection_name, indicator, var):
+    
+    Client = pymongo.MongoClient(URI)
+    db = Client[db_name]
+    collection = db[collection_name]
 
 
-path = "Result/foster/a06_meshheadinglist/"
-list_files = os.listdir(path)
+    path = "Result/{}/{}/".format(indicator,var)
+    list_files = os.listdir(path)
 
-
-for file in list_files:
-    file_path = path + file
-    list_of_insertion = []
-    with open(file_path, 'r', encoding='utf-8') as outfile:
-        docs = json.load(outfile) 
-    for doc in tqdm.tqdm(docs):
-        list_of_insertion.append(UpdateOne({'PMID': doc["PMID"]}, {'$set': {'a06_foster': doc['a06_foster']}}, upsert = True))
-        break
-
-collection.bulk_write(list_of_insertion)
+    for file in list_files:
+        file_path = path + file
+        list_of_insertion = []
+        with open(file_path, 'r', encoding='utf-8') as outfile:
+            docs = json.load(outfile) 
+        for doc in tqdm.tqdm(docs):
+            list_of_insertion.append(UpdateOne({'PMID': doc["PMID"]}, {'$set': {var+"_"+indicator : doc[var]}}, upsert = True))
+    collection.bulk_write(list_of_insertion)
 
 
 # You forgot the year ? sad for you
@@ -72,3 +75,5 @@ for doc in tqdm.tqdm(docs):
     if len(list_of_insertion) % 500000 == 0:
         collection_output.bulk_write(list_of_insertion)
         list_of_insertion = []
+
+collection_output.bulk_write(list_of_insertion)
