@@ -16,7 +16,7 @@ def mongo2json(URI,db_name,collection_name, var):
 
     years = collection.find().distinct("year")
     
-    path = "Data/docs/articles"
+    path = "Data/docs/{}".format(collection_name)
     if not os.path.exists(path):
         os.makedirs(path)
     years = [year for year in years if year != None]  
@@ -30,9 +30,18 @@ def mongo2json(URI,db_name,collection_name, var):
             with open(path + "/{}.json".format(year), 'w') as outfile:
                 json.dump(to_insert, outfile)
         
-mongo2json(URI = "mongodb://localhost:27017", db_name = 'novelty', collection_name = 'references', var = 'c04_referencelist')
+mongo2json(URI = "mongodb://localhost:27017", db_name = 'novelty_sample', collection_name = 'references_sample', var = 'c04_referencelist')
 #collection.create_index([("year",1)])
 
+"""
+Client = pymongo.MongoClient(URI)
+db = Client[db_name]
+collection = db[collection_name]
+
+docs = collection.find({},{"_id":0})
+with open("authors_sample.json", 'w') as outfile:
+    json.dump(list(docs), outfile)
+"""
 # result2mongo
 
 def json2mongo(URI,db_name,collection_name, indicator, var):
@@ -77,3 +86,13 @@ for doc in tqdm.tqdm(docs):
         list_of_insertion = []
 
 collection_output.bulk_write(list_of_insertion)
+
+# change key name
+
+    
+Client = pymongo.MongoClient(URI)
+db = Client[db_name]
+collection = db[collection_name]
+
+collection.update_many( {}, { "$rename": { "Mesh_year_category": "a06_meshheadinglist" } } )
+
