@@ -1,13 +1,15 @@
 import pymongo
-import tqdm
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import multiprocessing as mp
 
-client = pymongo.MongoClient('mongodb://Pierre:ilovebeta67@localhost:27017')
-mydb = client["pkg"] 
+client = pymongo.MongoClient('mongodb://localhost:27017')
+mydb = client["novelty"] 
 collection = mydb["authors"]
+
+
+
 
 #14.830.455 d'auteurs uniques
 
@@ -20,23 +22,22 @@ docs = collection.aggregate([
 ])
 
 # evidence of strong power law for number of paper which seems leggit
-number_of_papers = tqdm.tqdm([doc["Count"] for doc in docs])
+number_of_papers = [doc["Count"] for doc in docs]
 number_of_papers = pd.DataFrame(number_of_papers)
+number_of_papers.columns = ["n"] 
 ax = sns.distplot(number_of_papers[0],hist=False)
 plt.title("Density of number of papers per author")
 plt.savefig('../Results/plot1.png')
 
 
-# n_authors with atleast one aff detected, usefull to know type for econometrics, papers done by company are more novel
-# 8300977
-n_authors_with_aff = collection.count_documents({"oa04_affiliations":{"$exists":1}})
- 
-from utils import *
-import pickle
-pool = mp.Pool(processes=5)
-data = pool.map(read_doc, chunks())
-pool.close()
-pbar.close()
 
-pickle.dump( data, open( "D:/Github/New-novelty-indicator-using-graph-theory-framework/Data/authors_info.p", "wb" ) )
-data = pickle.load( open( "D:/Github/New-novelty-indicator-using-graph-theory-framework/Data/authors_info.p", "rb" ) )
+np.mean(number_of_papers)
+np.std(number_of_papers)
+(number_of_papers>500).sum()
+number_of_papers = number_of_papers.sort_values("n")
+number_of_papers = number_of_papers.reset_index(drop=True)
+prop = int(len(number_of_papers)*0.9999)
+number_of_papers.at[prop,"n"]
+
+(1 < number_of_papers < 300)
+len(number_of_papers[(number_of_papers.n > 1) & (number_of_papers.n < 300)])
