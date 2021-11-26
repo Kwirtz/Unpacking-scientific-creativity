@@ -1,10 +1,11 @@
 import novelpy
 
-ref_cooc = novelpy.utils.cooc_utils.create_cooc(
-                    collection_name = "meshterms_sample", 
+ref_cooc = novelpy.utils.create_cooc(
+                    collection_name = "references_sample", 
                     year_var="year",
-                    var = "a06_meshheadinglist",
-                    sub_var = "descUI",
-                    weighted_network = True, self_loop = True)
+                    var = "c04_referencelist",
+                    sub_var = "item",
+                    weighted_network = False, self_loop = False)
 
 ref_cooc.main()
+
