@@ -14,7 +14,7 @@ def mongo2json(URI,db_name,collection_name, var):
     db = Client[db_name]
     collection = db[collection_name]
 
-    years = collection.find().distinct("year")
+    years = collection.find({var:{"$exists":True}}).distinct("year")
     
     path = "Data/docs/{}".format(collection_name)
     if not os.path.exists(path):
@@ -30,7 +30,7 @@ def mongo2json(URI,db_name,collection_name, var):
             with open(path + "/{}.json".format(year), 'w') as outfile:
                 json.dump(to_insert, outfile)
         
-mongo2json(URI = "mongodb://localhost:27017", db_name = 'novelty_sample', collection_name = 'references_sample', var = 'c04_referencelist')
+mongo2json(URI = "mongodb://localhost:27017", db_name = 'novelty', collection_name = 'Ref_Journals', var = 'c04_referencelist')
 #collection.create_index([("year",1)])
 
 """
