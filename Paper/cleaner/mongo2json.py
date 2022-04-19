@@ -19,18 +19,20 @@ def mongo2json(URI,db_name,collection_name, var):
     path = "Data/docs/{}".format(collection_name)
     if not os.path.exists(path):
         os.makedirs(path)
-    years = [year for year in years if year != None]  
-      
+    years = [year for year in years if year != None if year > 2012]  
+    
+    to_insert = []
     for year in tqdm.tqdm(years):
         docs = collection.find({"year":year,var:{"$exists":True}},{"_id":0})
-        to_insert = list(docs)
+        for doc in docs:
+            to_insert.append({"PMID":doc["PMID"], "year":doc["year"],var:doc[var]})
         if to_insert == []:
             continue
         else:
             with open(path + "/{}.json".format(year), 'w') as outfile:
                 json.dump(to_insert, outfile)
         
-mongo2json(URI = "mongodb://localhost:27017", db_name = 'novelty', collection_name = 'Ref_Journals', var = 'c04_referencelist')
+mongo2json(URI = "mongodb://localhost:27017", db_name = 'novelty', collection_name = 'Citation_net', var = 'refs_pmid_wos')
 #collection.create_index([("year",1)])
 
 """
@@ -69,6 +71,10 @@ def json2mongo(URI,db_name,collection_name, indicator, var):
 Client = pymongo.MongoClient("mongodb://localhost:27017")
 db = Client['pkg']
 collection = db['articles']
+
+
+  years = collection.find({var:{"$exists":True}}).distinct("year")
+
 db_output = Client['novelty']
 collection_output = db_output['references']
 
