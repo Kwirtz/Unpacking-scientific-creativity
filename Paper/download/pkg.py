@@ -307,8 +307,12 @@ item.insert_table_author(fp_csv="G:/backup_paper2/pkg/OA05_Researcher_Employment
                          fs_file = "D:/kevin_data")
 
 
-#
-"""
+con = pymysql.connect(host='localhost', user="root", passwd="root")
+cur = con.cursor(pymysql.cursors.DictCursor)
+cur.execute("SELECT name FROM master.sys.databases")
+
+##### CSV insertion
+
 fp_csv="G:/backup_paper2/pkg/OA04_Affiliations/OA04_Affiliations.csv"
 fs_file = "D:/kevin_data"
 
@@ -316,7 +320,8 @@ fs_file = "D:/kevin_data"
 table_name = fp_csv.split('/')[-1].split(".")[0].lower()
 client = pymongo.MongoClient('mongodb://localhost:27017')
 mydb = client["pkg"] 
-collection = mydb["authors"]
+collection = mydb["articles"]
+collection_authors = mydb["authors_test"]
 
 if fs_file != None:
     try:
@@ -329,33 +334,62 @@ if fs_file != None:
 columns = pd.read_csv(fp_csv,nrows=1).columns
 df = pd.read_csv(fp_csv,skiprows=processed,header=0)
 df.columns = columns
-for id_, PMID, AND_ID, AffiliationOrder, Affiliation, Department, Institution, Email, ZipCode,\
-    Location, Country, City, State, AffiliationType ,Latitude, Longitude, Fips in tqdm.tqdm(zip(df["id"],df["PMID"],df["AND_ID"],df["AffiliationOrder"],
+for id_, PMID, AND_ID, AuOrder, AffiliationOrder, Affiliation, Department, Institution, Email, ZipCode,\
+    Location, Country, City, State, AffiliationType ,Latitude, Longitude, Fips in tqdm.tqdm(zip(df["id"],df["PMID"],df["AND_ID"], df["AuOrder"], df["AffiliationOrder"],
                                      df["Affiliation"],df["Department"],df["Institution"],
                                      df["Email"],df["ZipCode"],df["Location"],df["Country"],
                                      df["City"],df["State"],df["AffiliationType"],df["Latitude"],
                                      df["Longitude"],df["Fips"])):
+    doc = collection.find_one({"PMID":PMID})
+    for author in doc["a02_authorlist"]:
+        if author["Au_Order"] == AuOrder:
+            AND_ID = author["AID"]
+            author_name = author["LastName"] + " " + author["ForeName"]
     info = {"PMID":PMID, "AND_ID":AND_ID, "Affiliation":Affiliation,
-            "Country":Country, "City":City,
-            "AffiliationType":AffiliationType, "Latitude":Latitude, "Longitude":Longitude}
+            "Country":Country, "City":City, "author_name": author_name,
+            "AffiliationType":AffiliationType, "Latitude":Latitude, "Longitude":Longitude,"year":doc["year"]}
     if info["AND_ID"] == 0:
         continue
-    if collection.find_one_and_update({"AND_ID":info["AND_ID"]}, {"$push":{table_name:info}}):
+    if collection_authors.find_one_and_update({"AND_ID":info["AND_ID"]}, {"$push":{table_name:info}}):
         pass
     else:
-        collection.insert_one({"AND_ID":info["AND_ID"]}, {table_name:[info]})
+        collection_authors.insert_one({"AND_ID":info["AND_ID"]}, {table_name:[info]})
     if fs_file:
         processed += 1
         with open(fs_file+ "/{}.txt".format(table_name),"w+") as f:
             f.write(str(processed))
 
 
-
+"""
     info = {"id":id_, "PMID":PMID, "AND_ID":AND_ID, "AffiliationOrder":AffiliationOrder, "Affiliation":Affiliation,
             "Department":Department, "Institution":Institution, "Email":Email,"ZipCode":ZipCode,
             "Location":Location, "Country":Country, "City":City,"State":State,
             "AffiliationType":AffiliationType, "Latitude":Latitude, "Longitude":Longitude,"Fips":Fips}
     
+
+
+#collection.update({}, {'$unset': {'c04_referencelist':1}}, multi=True)
 """
 
-collection.update({}, {'$unset': {'c04_referencelist':1}}, multi=True)
+
+import pandas as pd
+
+fp_csv="G:/backup_paper2/pkg/OA04_Affiliations/OA04_Affiliations.csv"
+fs_file = "D:/kevin_data"
+
+        
+table_name = fp_csv.split('/')[-1].split(".")[0].lower()
+
+if fs_file != None:
+    try:
+        with open(fs_file+ "/{}.txt".format(table_name), "r") as f:
+            processed = int(f.read())
+    except:
+        processed = 0
+
+
+columns = pd.read_csv(fp_csv,nrows=1).columns
+df = pd.read_csv(fp_csv,skiprows=processed,header=0)
+df = df.sample(n=3000000)
+df.columns = columns
+df.to_csv("G:/sample_moritz.csv")  
