@@ -19,10 +19,10 @@ def mongo2json(URI,db_name,collection_name, var):
     path = "Data/docs/{}".format(collection_name)
     if not os.path.exists(path):
         os.makedirs(path)
-    years = [year for year in years if year != None if year > 2012]  
+    years = [year for year in years if year != None]  
     
-    to_insert = []
     for year in tqdm.tqdm(years):
+        to_insert = []
         docs = collection.find({"year":year,var:{"$exists":True}},{"_id":0})
         for doc in docs:
             to_insert.append({"PMID":doc["PMID"], "year":doc["year"],var:doc[var]})
@@ -32,7 +32,8 @@ def mongo2json(URI,db_name,collection_name, var):
             with open(path + "/{}.json".format(year), 'w') as outfile:
                 json.dump(to_insert, outfile)
         
-mongo2json(URI = "mongodb://localhost:27017", db_name = 'novelty', collection_name = 'Citation_net', var = 'refs_pmid_wos')
+mongo2json(URI = 'mongodb://Pierre:ilovebeta67@localhost:27017/', db_name = 'novelty_final',
+           collection_name = 'Citation_network', var = 'refs_pmid_wos')
 #collection.create_index([("year",1)])
 
 """
