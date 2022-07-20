@@ -39,33 +39,33 @@ class dl_f1000():
 
         if fs_file != None:
             try:
-                with open(fs_file+ "/F1000_hrefs_lastpage.txt","r") as f:
+                with open(fs_file,"r") as f:
                     processed = int(f.read())
             except:
                 processed = 0   
                 
         collection = self.mydb["hrefs"]
         self.driver.get("https://facultyopinions.com/prime/recommendations?evaluationPublishedInLastDays=&page=1&show=100")
-        WebDriverWait(self.driver, 10).until(lambda driver: self.driver.find_elements(By.XPATH, "//li[@data-test-id='page-last']"))
-        n_pages = int(self.driver.find_element(By.XPATH, "//li[@data-test-id='page-last']").text)
-        
+        WebDriverWait(self.driver, 10).until(lambda driver: self.driver.find_elements(By.XPATH, "//span[@class='css-a23cf7']"))
+        n_pages = int(re.sub('\D', '', self.driver.find_element(By.XPATH, "//span[@class='css-a23cf7']").text))
+        print(n_pages)
         for i in tqdm.tqdm(range(n_pages),total=n_pages):
             if fs_file != None:
                 if i < processed:
                     continue
             if i != 0:
                 self.driver.get("https://facultyopinions.com/prime/recommendations?evaluationPublishedInLastDays=&page={}&show=100".format(i+1))
-            WebDriverWait(self.driver, 10).until(lambda driver: self.driver.find_elements(By.XPATH, "//div[@class='css-vqx1kp recommendation']"))
-            publications = self.driver.find_elements(By.XPATH, "//div[@class='css-vqx1kp recommendation']")
+            WebDriverWait(self.driver, 10).until(lambda driver: self.driver.find_elements(By.XPATH, ".//article[@class='css-35jzck e1pdjjwz9']"))
+            publications = self.driver.find_elements(By.XPATH, ".//article[@class='css-35jzck e1pdjjwz9']")
             post_list = []
             for pub in publications:
-                href = pub.find_element(By.XPATH,".//a[@class='css-1hc97a8']").get_attribute("href")
+                href = pub.find_element(By.XPATH,".//a[@class='css-10i63lj e1pdjjwz7']").get_attribute("href")
                 post = {"href":href}
                 post_list.append(post)
             collection.insert_many(post_list)
             time.sleep(10)
             if fs_file:
-                with open(fs_file+ "/F1000_hrefs_lastpage.txt","w+") as f:
+                with open(fs_file, "w+") as f:
                     f.write(str(i))
 
     def connect_driver(self):
@@ -156,11 +156,15 @@ class dl_f1000():
                     f.write(str(it))
             
 instance = dl_f1000(username = "bot_alfred@outlook.fr", password = "Bot012345678914061923",
-         mongo_uri = 'mongodb://localhost:27017', db_name= "F1000")
-# First get href
-#instance.get_hrefs_all()
+         mongo_uri = 'mongodb://localhost:27017', db_name= "F1000_2")
+
 # Connect to go paper by paper
 instance.connect_driver()
+
+# First get href
+instance.get_hrefs_all(fs_file = "D:/kevin_data/F1000_hrefs_lastpage.txt")
+
 # Iterate through hrefs
 instance.get_infos(fs_file = "D:/kevin_data")
+
 
