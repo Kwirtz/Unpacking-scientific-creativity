@@ -157,3 +157,4 @@ en_core_sci_lg-0.4.0/en_core_sci_lg/en_core_sci_lg-0.4.0/vocab/vectors
 en_core_sci_lg-0.4.0/PKG-INFO
 en_core_sci_lg-0.4.0/setup.cfg
 en_core_sci_lg-0.4.0/setup.py
+*.tex

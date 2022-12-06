@@ -32,8 +32,8 @@ def mongo2json(URI,db_name,collection_name, var):
             with open(path + "/{}.json".format(year), 'w') as outfile:
                 json.dump(to_insert, outfile)
         
-mongo2json(URI = 'mongodb://Pierre:ilovebeta67@localhost:27017/', db_name = 'novelty_final',
-           collection_name = 'Citation_network', var = 'refs_pmid_wos')
+mongo2json(URI = 'mongodb://localhost:27017', db_name = 'novelty',
+           collection_name = 'output', var = 'shibayama')
 #collection.create_index([("year",1)])
 
 """
