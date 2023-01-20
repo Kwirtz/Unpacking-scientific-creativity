@@ -129,7 +129,9 @@ summary(m1 <- glm.nb(daysabs ~ math + prog, data = dat))
 
 # XGBOOST ####
 
-df_result = 
+df_result = matrix(ncol = length(f1000_cat_binary), nrow = 0)
+colnames(df_result) <- f1000_cat_binary
+
 
 for(cat in f1000_cat_binary){
     accuracies = c()
@@ -172,9 +174,8 @@ for(cat in f1000_cat_binary){
       #precision <- conf_mat$byClass['Pos Pred Value']    
       #recall <- conf_mat$byClass['Sensitivity']  
       accuracies = append(accuracies, conf_mat$byClass['Balanced Accuracy'] )
-
-    }  
-    df[cat] = accuracies
+      print(accuracies)
+    }
 }
 
 df
