@@ -1,10 +1,7 @@
+import tqdm
 import pymongo
 import pandas as pd 
-import numpy as np
-import re
-import tqdm
-import glob
-import json
+import seaborn as sns
 
 df = pd.read_csv("Data/regression.csv")
 
@@ -12,53 +9,52 @@ client = pymongo.MongoClient("mongodb://localhost:27017")
 db = client['novelty']
 collection = db['output_Author_proximity']
 
-Author_prox_title = {i:{} for i in df["PMID"]}
-Author_prox_abstract = {i:{} for i in df["PMID"]}
+
+list_of_insertion_intra = []
+list_of_insertion_inter = []
 
 for pmid in tqdm.tqdm(df["PMID"]):
     docs = list(collection.find({"PMID":pmid,'authors_novelty_abstract_5':{"$exists":1}}))
-    intra = []
-    inter = []
     for doc in docs:
         try:
-            for author in docs[0]['authors_novelty_abstract_5']["individuals_scores"]:
-                intra.append(author["percentiles"]["10%"])
-            for author_comb in docs[0]['authors_novelty_abstract_5']["iter_individuals_scores"]:
-                inter.append(author_comb["percentiles"]["10%"])
-            Author_prox_abstract[pmid]["intra"] = intra
-            Author_prox_abstract[pmid]["inter"] = inter
-        except:
+            for author in doc['authors_novelty_abstract_5']["individuals_scores"]:
+                list_of_insertion_intra.append([doc["PMID"], author["percentiles"]["10%"]])
+        except Exception as e:
             continue
+        try:
+            for author_comb in doc['authors_novelty_abstract_5']["iter_individuals_scores"]:
+                list_of_insertion_inter.append([doc["PMID"], author_comb["percentiles"]["10%"]])
+        except Exception as e:
+            continue      
+        
+        
+df_intra = pd.DataFrame(list_of_insertion_intra,columns=["PMID","intra"])
+df_inter = pd.DataFrame(list_of_insertion_inter,columns=["PMID","inter"])
+df_intra['percent_rank'] = df_intra['intra'].rank(pct=True)
+df_inter['percent_rank'] = df_inter['inter'].rank(pct=True)
 
 
-docs = collection.find()
-for doc in tqdm.tqdm(docs):
-    try:
-        docs = list(collection_author.find({"PMID":id_,'authors_novelty_abstract_5':{"$exists":1}}))
-        mean_intra = []
-        mean_inter = []
-        for doc in docs:
-            for author in docs[0]['authors_novelty_abstract_5']["individuals_scores"]:
-                mean_intra.append(author["percentiles"]["10%"])
-            for author_comb in docs[0]['authors_novelty_abstract_5']["iter_individuals_scores"]:
-                mean_inter.append(author_comb["percentiles"]["10%"])
-        author_intra_abstract = np.mean(mean_intra)
-        author_inter_abstract = np.mean(mean_inter)
-    except:
-        author_intra_abstract = None
-        author_inter_abstract = None
-    try:
-        docs = list(collection_author.find({"PMID":id_,'authors_novelty_title_5':{"$exists":1}}))
-        mean_intra = []
-        mean_inter = []
-        for doc in docs:
-            for author in docs[0]['authors_novelty_title_5']["individuals_scores"]:
-                mean_intra.append(author["percentiles"]["10%"])
-            for author_comb in docs[0]['authors_novelty_title_5']["iter_individuals_scores"]:
-                mean_inter.append(author_comb["percentiles"]["10%"])
-        author_intra_title = np.mean(mean_intra)
-        author_inter_title = np.mean(mean_inter)
-    except:
-        author_intra_title = None
-        author_inter_title = None
-#{PMID:10552265}
+df = pd.read_csv("Data/regression.csv")
+df["share_diverse"] = 0
+df["count_diverse"] = 0
+
+df_temp = pd.merge(df, df_intra, on = "PMID", how = 'outer')
+df.index = df["PMID"]
+
+highly_diverse = df_temp[df_temp["percent_rank"]>0.90].groupby("PMID").count()
+
+count_diverse = {i:0 for i in df["PMID"]}
+share_diverse = {i:0 for i in df["PMID"]}
+
+for row in tqdm.tqdm(df_temp[df_temp["percent_rank"]>0.90].groupby("PMID").agg({'PMID':'first', 'percent_rank': 'count', 'nb_aut': 'first'}).iterrows()):
+    pmid = row[1]["PMID"]
+    count_diverse[pmid] = row[1]["percent_rank"]
+    share_diverse[pmid] = row[1]["percent_rank"]/row[1]["nb_aut"]
+
+    
+
+df["share_diverse"] = df['PMID'].map(share_diverse)
+df["count_diverse"] = df['PMID'].map(count_diverse)
+
+
+

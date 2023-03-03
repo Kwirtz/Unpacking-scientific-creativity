@@ -4,7 +4,6 @@ embedding = Embedding(
 		client_name = 'mongodb://localhost:27017',
 		db_name = 'novelty',
 		year_variable = 'year',
-		time_range = range(2000,2016),
 		id_variable = 'PMID',
 		references_variable = 'refs_pmid_wos',
 		pretrain_path = 'en_core_sci_lg-0.4.0/en_core_sci_lg/en_core_sci_lg-0.4.0',
@@ -16,8 +15,7 @@ embedding = Embedding(
 
 embedding.get_articles_centroid(
       collection_articles = 'Title_abs',
-      collection_embedding = 'embedding',
-      year_range = range(2019,2021,1))
+      collection_embedding = 'embedding')
 
 embedding.get_references_embedding(
       collection_articles = 'Citation_net',
