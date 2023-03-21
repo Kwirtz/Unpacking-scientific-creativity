@@ -203,12 +203,12 @@ def get_indicators(id_):
         lee_ref = None
     try:
         doc = collection_shibayama.find_one({"PMID":id_,'shibayama_abstract_embedding':{"$exists":1}})
-        shibayama_abstract = doc['shibayama_abstract_embedding']["10%"]
+        shibayama_abstract = doc['shibayama_abstract_embedding']["90%"]
     except:
         shibayama_abstract = None
     try:
         doc = collection_shibayama.find_one({"PMID":id_,'shibayama_title_embedding':{"$exists":1}})
-        shibayama_title = doc['shibayama_title_embedding']["10%"]
+        shibayama_title = doc['shibayama_title_embedding']["90%"]
     except:
         shibayama_title = None    
         
@@ -371,12 +371,12 @@ for pmid in tqdm.tqdm(df["PMID"]):
     for doc in docs:
         try:
             for author in doc['authors_novelty_abstract_5']["individuals_scores"]:
-                list_of_insertion_intra.append([doc["PMID"], author["percentiles"]["10%"]])
+                list_of_insertion_intra.append([doc["PMID"], author["percentiles"]["90%"]])
         except Exception as e:
             continue
         try:
             for author_comb in doc['authors_novelty_abstract_5']["iter_individuals_scores"]:
-                list_of_insertion_inter.append([doc["PMID"], author_comb["percentiles"]["10%"]])
+                list_of_insertion_inter.append([doc["PMID"], author_comb["percentiles"]["90%"]])
         except Exception as e:
             continue      
         
@@ -386,8 +386,6 @@ df_inter = pd.DataFrame(list_of_insertion_inter,columns=["PMID","inter"])
 df_intra['percent_rank'] = df_intra['intra'].rank(pct=True)
 df_inter['percent_rank'] = df_inter['inter'].rank(pct=True)
 
-
-df = pd.read_csv("Data/regression.csv")
 df["share_diverse"] = 0
 df["count_diverse"] = 0
 
