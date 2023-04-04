@@ -6,6 +6,10 @@ import tqdm
 import glob
 import json
 
+
+with open('Data/deg_cen.pickle', 'r') as fp:
+    deg_cen = json.load(fp)
+
 def get_scimago_file(year):
 
     journals = pd.read_csv(r'Data/scimago_journals/scimagojr {}.csv'.format(str(year)),
@@ -43,12 +47,17 @@ class CreateVariable:
     def get_aut_infos(self,author_list):
         nb_aut = len(author_list)
         aff_captured = []
+        sum_deg_cen = 0
+        sum_deg_cen_cumsum = 0
         for author in author_list:
             if author['Affiliation'] != '':
                 aff_captured.append(author['Affiliation'])
+            sum_deg_cen += deg_cen[self.year][author["AID"]]["deg_cen"]
+            sum_deg_cen_cumsum += deg_cen[self.year][author["AID"]]["cumsum"]
         share_aff_captured = len(aff_captured)/nb_aut
 
-        self.variables.update({'share_aff_captured':share_aff_captured, 'nb_aut': nb_aut})
+        self.variables.update({'share_aff_captured':share_aff_captured, 'nb_aut': nb_aut,
+                               "sum_deg_cen":sum_deg_cen,"sum_deg_cen_cumsum":sum_deg_cen_cumsum })
     
     def get_nb_entity_and_age_distribution(self,entities,name):
         nb_entity = len(entities)
@@ -113,7 +122,8 @@ class CreateVariable:
             self.length_text(doc['a04_abstract'][0]['AbstractText'],'a04_abstract')
         if 'a05_grantlist' in doc:
             self.variables.update({'nb_grant':len(doc['a05_grantlist'])})
-                                   
+        if 'a05_grantlist' in doc:
+            self.variables.update({'nb_grant':len(doc['a05_grantlist'])})                                  
                                    
     def run(self):
         docs = self.collection.find({'year':self.year})
