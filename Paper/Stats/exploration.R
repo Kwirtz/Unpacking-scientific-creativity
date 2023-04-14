@@ -15,8 +15,24 @@ library(glue)
 #library(skimr)
 library(stargazer)
 library(corrplot)
+library(ggplot2)
 
 #setwd("G:/Github/Taxonomy-of-novelty")
 setwd("C:/Users/kevin/Documents/GitHub/Taxonomy-of-novelty")
 
 df <- read_csv("Data/regression.csv")
+
+
+ggplot(df %>%drop_na(count_diverse), aes(x=share_diverse, y=nb_cit)) +
+  geom_point(size=2, shape=23)
+
+ggplot(df %>%na.omit("nb_aut"), aes(x=nb_aut, y=nb_cit)) +
+  geom_point(size=2, shape=23)
+
+
+test = df %>%
+  drop_na(share_diverse,nb_cit,nb_aut) %>%
+  mutate(nb_cit_weighted = nb_cit/nb_aut) %>%
+  group_by(share_diverse) %>%
+  summarise(across(nb_cit_weighted, mean, na.rm = TRUE))
+
