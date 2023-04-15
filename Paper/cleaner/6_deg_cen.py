@@ -1,6 +1,6 @@
 import gc
 import tqdm
-import json
+import pickle
 import pymongo
 import pandas as pd
 from collections import defaultdict
@@ -14,7 +14,7 @@ collection = db["authors"]
 authors2deg_cen = defaultdict(lambda: defaultdict(int))
 
 period = collection.distinct("year")
-period = [i for i in period if i!=None and i<2006]
+period = [i for i in period if i!=None and i<2006 and i > 1979]
 
 
 for year in tqdm.tqdm(period):
@@ -50,5 +50,5 @@ for row in tqdm.tqdm(df.iterrows()):
     authors_profile[row[1]["year"]][row[1]["AID"]]["deg_cen"] = row[1]["deg_cen"]
     authors_profile[row[1]["year"]][row[1]["AID"]]["cumsum"] = row[1]["cumsum"]
     
-with open('Data/deg_cen.pickle', 'w') as fp:
-    json.dump(authors_profile, fp)
+with open('Data/deg_cen.pickle', 'wb') as fp:
+    pickle.dump(dict(authors_profile), fp)

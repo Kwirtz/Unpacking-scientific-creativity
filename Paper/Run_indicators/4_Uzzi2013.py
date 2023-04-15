@@ -1,7 +1,7 @@
 import novelpy
 import tqdm
 
-for year in tqdm.tqdm(range(2000,2016)):
+for year in tqdm.tqdm(range(2000,2006)):
     Uzzi = novelpy.indicators.Uzzi2013(collection_name = "Meshterms",
                                        id_variable = 'PMID',
                                        year_variable = 'year',

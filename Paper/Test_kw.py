@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import re
 import tqdm
+import json
+import pickle
+import collections
 
 def get_scimago_file(year):
 
@@ -118,3 +121,37 @@ class CreateVariable:
                 self.db['control_var_2000_2005'].insert_many(list_of_insertion)
                 list_of_insertion = []
         self.db['control_var_2000_2005'].insert_many(list_of_insertion)
+
+
+with open("Data/docs/Meshterms/2000.json","r") as f:
+    test = json.load(f)
+    
+for i in test:
+    if i["PMID"] == 10592223:
+        break
+    
+
+with open("Result/uzzi/2000.json","r") as f:
+    test = json.load(f)
+        
+with open("Data/score/uzzi/Mesh_year_category/2000.p","rb") as f:
+    test = pickle.load(f)   
+    
+    
+for i in range(2000,2017,1):
+    with open("Data/cooc_sample/Mesh_year_category/sample_0_{}.p".format(i),"rb") as f:
+        test = pickle.load(f)   
+    
+client = pymongo.MongoClient("mongodb://localhost:27017")
+db = client['novelty']
+collection = db['Meshterms']
+
+docs = collection.find({"year":2000})
+
+years = []
+for doc in tqdm.tqdm(docs):
+    if "Mesh_year_category" in doc:
+        for mesh in doc["Mesh_year_category"]:
+            years.append(mesh["year"])
+
+c = collections.Counter(years)

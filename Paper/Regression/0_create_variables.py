@@ -5,10 +5,11 @@ import re
 import tqdm
 import glob
 import json
+import pickle
 
+with open('Data/deg_cen.pickle', 'rb') as fp:
+    deg_cen = pickle.load(fp)
 
-with open('Data/deg_cen.pickle', 'r') as fp:
-    deg_cen = json.load(fp)
 
 def get_scimago_file(year):
 
@@ -19,6 +20,8 @@ def get_scimago_file(year):
     journals = journals.explode('Issn')
     journals['Issn'] = journals['Issn'].astype(str)
     return journals
+
+journals = get_scimago_file(2000)
 
 class CreateVariable:
     
@@ -52,12 +55,22 @@ class CreateVariable:
         for author in author_list:
             if author['Affiliation'] != '':
                 aff_captured.append(author['Affiliation'])
-            sum_deg_cen += deg_cen[self.year][author["AID"]]["deg_cen"]
-            sum_deg_cen_cumsum += deg_cen[self.year][author["AID"]]["cumsum"]
+            try:
+                sum_deg_cen += deg_cen[self.year-1][author["AID"]]["deg_cen"]
+            except:
+                pass
+            try:
+                sum_deg_cen_cumsum += deg_cen[self.year-1][author["AID"]]["cumsum"]
+            except:
+                pass
+        try:
+            sum_deg_cen_cumsum_mean =  sum_deg_cen_cumsum / nb_aut 
+        except:
+            sum_deg_cen_cumsum_mean = 0
         share_aff_captured = len(aff_captured)/nb_aut
 
         self.variables.update({'share_aff_captured':share_aff_captured, 'nb_aut': nb_aut,
-                               "sum_deg_cen":sum_deg_cen,"sum_deg_cen_cumsum":sum_deg_cen_cumsum })
+                               "sum_deg_cen":sum_deg_cen,"sum_deg_cen_cumsum":sum_deg_cen_cumsum,"sum_deg_cen_cumsum_mean":sum_deg_cen_cumsum_mean  })
     
     def get_nb_entity_and_age_distribution(self,entities,name):
         nb_entity = len(entities)
@@ -66,6 +79,10 @@ class CreateVariable:
         
         self.variables.update({name: nb_entity, name+'_age_std':std_age_entitiy })
 
+    def get_nb_entity_meshterms(self,entities,name):
+        nb_entity = len(entities)
+        
+        self.variables.update({name: nb_entity})
 
     def get_JIF(self,ISSN):
         ISSN = re.sub('-','',ISSN)
@@ -111,8 +128,8 @@ class CreateVariable:
             self.get_aut_infos(doc['a02_authorlist'])
         if 'c04_referencelist' in doc:
             self.get_nb_entity_and_age_distribution(doc['c04_referencelist'],'c04_referencelist')
-        if 'Mesh_year_category' in doc:
-            self.get_nb_entity_and_age_distribution(doc['Mesh_year_category'],'Mesh_year_category')
+        if "a06_meshheadinglist" in doc:
+            self.get_nb_entity_meshterms(doc['a06_meshheadinglist'],'a06_meshheadinglist')
         if 'Journal_ISSN' in doc:
             self.get_JIF(doc['Journal_ISSN'])
         if 'ArticleTitle' in doc:
@@ -138,7 +155,7 @@ class CreateVariable:
 """
 for year in range(2000,2006):
     CreateVariable(year).run()
-"""    
+"""
 #%% Create df for regressions
 
     
@@ -213,12 +230,12 @@ def get_indicators(id_):
         lee_ref = None
     try:
         doc = collection_shibayama.find_one({"PMID":id_,'shibayama_abstract_embedding':{"$exists":1}})
-        shibayama_abstract = doc['shibayama_abstract_embedding']["90%"]
+        shibayama_abstract = doc['shibayama_abstract_embedding']["percentiles"]["90%"]
     except:
         shibayama_abstract = None
     try:
         doc = collection_shibayama.find_one({"PMID":id_,'shibayama_title_embedding':{"$exists":1}})
-        shibayama_title = doc['shibayama_title_embedding']["90%"]
+        shibayama_title = doc['shibayama_title_embedding']["percentiles"]["90%"]
     except:
         shibayama_title = None    
         
@@ -227,10 +244,10 @@ def get_indicators(id_):
         mean_intra = []
         mean_inter = []
         for doc in docs:
-            for author in docs[0]['authors_novelty_abstract_5']["individuals_scores"]:
-                mean_intra.append(author["percentiles"]["10%"])
-            for author_comb in docs[0]['authors_novelty_abstract_5']["iter_individuals_scores"]:
-                mean_inter.append(author_comb["percentiles"]["10%"])
+            for author in doc['authors_novelty_abstract_5']["individuals_scores"]:
+                mean_intra.append(author["percentiles"]["90%"])
+            for author_comb in doc['authors_novelty_abstract_5']["iter_individuals_scores"]:
+                mean_inter.append(author_comb["percentiles"]["90%"])
         author_intra_abstract = np.mean(mean_intra)
         author_inter_abstract = np.mean(mean_inter)
     except:
@@ -241,9 +258,9 @@ def get_indicators(id_):
         mean_intra = []
         mean_inter = []
         for doc in docs:
-            for author in docs[0]['authors_novelty_title_5']["individuals_scores"]:
+            for author in doc['authors_novelty_title_5']["individuals_scores"]:
                 mean_intra.append(author["percentiles"]["10%"])
-            for author_comb in docs[0]['authors_novelty_title_5']["iter_individuals_scores"]:
+            for author_comb in doc['authors_novelty_title_5']["iter_individuals_scores"]:
                 mean_inter.append(author_comb["percentiles"]["10%"])
         author_intra_title = np.mean(mean_intra)
         author_inter_title = np.mean(mean_inter)
@@ -283,6 +300,24 @@ def get_control_variables(doc):
         nb_cit = doc["nb_cit"]
     except:
         nb_cit = None
+    try:
+        nb_meshterms = doc["a06_meshheadinglist"]
+    except:
+        nb_meshterms = None
+    try:
+        sum_deg_cen = doc["sum_deg_cen"]
+    except:
+        sum_deg_cen = None
+    try:
+        sum_deg_cen_cumsum = doc["sum_deg_cen_cumsum"]
+    except:
+        sum_deg_cen_cumsum = None        
+
+    try:
+        sum_deg_cen_cumsum_mean = doc["sum_deg_cen_cumsum_mean"]
+    except:
+        sum_deg_cen_cumsum_mean = None    
+        
     try:
         nb_ref = doc["nb_ref"]
     except:
@@ -335,11 +370,12 @@ def get_control_variables(doc):
         a04_abstract_length = doc["a04_abstract_length"]
     except:
         a04_abstract_length = None
-    return [PMID,year,nb_cit,nb_ref,share_aff_captured,nb_aut,c04_referencelist,c04_referencelist_age_std,
-            journal_SJR, journal_ref_per_doc, journal_cit_per_doc, journal_category, journal_age, is_review,
-            ArticleTitle_length,a04_abstract_length]
+    return [PMID,year,nb_cit,nb_ref, nb_meshterms, sum_deg_cen, sum_deg_cen_cumsum, sum_deg_cen_cumsum_mean, share_aff_captured,nb_aut,
+            c04_referencelist,c04_referencelist_age_std, journal_SJR, journal_ref_per_doc, journal_cit_per_doc, journal_category, journal_age,
+            is_review, ArticleTitle_length,a04_abstract_length]
 
-columns = ["PMID","year","nb_cit","nb_ref","share_aff_captured","nb_aut","c04_referencelist",
+columns = ["PMID","year","nb_cit","nb_ref","nb_meshterms","sum_deg_cen","sum_deg_cen_cumsum", "sum_deg_cen_cumsum_mean",
+           "share_aff_captured","nb_aut","c04_referencelist",
            "c04_referencelist_age_std", "journal_SJR", "journal_ref_per_doc", "journal_cit_per_doc",
            "journal_category", "journal_age", "is_review", "ArticleTitle_length","a04_abstract_length",
            "DI1","DI5","DI1nok","DeIn","Breadth","Depth","wang_mesh", "wang_ref","foster_mesh",
@@ -396,27 +432,46 @@ df_inter = pd.DataFrame(list_of_insertion_inter,columns=["PMID","inter"])
 df_intra['percent_rank'] = df_intra['intra'].rank(pct=True)
 df_inter['percent_rank'] = df_inter['inter'].rank(pct=True)
 
-df["share_diverse"] = 0
-df["count_diverse"] = 0
 
 df_temp = pd.merge(df, df_intra, on = "PMID", how = 'outer')
 df.index = df["PMID"]
 
-highly_diverse = df_temp[df_temp["percent_rank"]>0.90].groupby("PMID").count()
 
 count_diverse = {i:0 for i in df["PMID"]}
 share_diverse = {i:0 for i in df["PMID"]}
+count_typical = {i:0 for i in df["PMID"]}
+share_typical = {i:0 for i in df["PMID"]}
+
 
 for row in tqdm.tqdm(df_temp[df_temp["percent_rank"]>0.90].groupby("PMID").agg({'PMID':'first', 'percent_rank': 'count', 'nb_aut': 'first'}).iterrows()):
     pmid = row[1]["PMID"]
     count_diverse[pmid] = row[1]["percent_rank"]
     share_diverse[pmid] = row[1]["percent_rank"]/row[1]["nb_aut"]
 
+for row in tqdm.tqdm(df_temp[df_temp["percent_rank"]<0.50].groupby("PMID").agg({'PMID':'first', 'percent_rank': 'count', 'nb_aut': 'first'}).iterrows()):
+    pmid = row[1]["PMID"]
+    count_typical[pmid] = row[1]["percent_rank"]
+    share_typical[pmid] = row[1]["percent_rank"]/row[1]["nb_aut"]
     
 
 df["share_diverse"] = df['PMID'].map(share_diverse)
 df["count_diverse"] = df['PMID'].map(count_diverse)
+df["share_typical"] = df['PMID'].map(share_typical)
+df["count_typical"] = df['PMID'].map(count_typical)
 
 df.to_csv("Data/regression.csv",index=False)
-#df = pd.read_csv("Data/regression.csv")
+
+#df_temp = pd.read_csv("Data/regression.csv")[["PMID",'uzzi_mesh', 'uzzi_ref']]
+#df = pd.merge(df_temp, df.reset_index(drop=True).drop(['uzzi_mesh', 'uzzi_ref'], axis=1), on='PMID', how='inner')
 #doc = collection.find_one({"PMID":11051549})
+
+
+#df = pd.read_csv("Data/regression.csv")
+#df = df.drop_duplicates(subset="PMID", keep='first')
+#df.to_csv("Data/regression.csv",index=False)
+{AND_ID:8542016}
+
+{PMID:11802423}
+10592202
+10592278
+11072346
