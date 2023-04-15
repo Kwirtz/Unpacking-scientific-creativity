@@ -1,3 +1,4 @@
+import tqdm
 import pymongo
 import numpy as np
 import pandas as pd
@@ -41,3 +42,17 @@ number_of_papers.at[prop,"n"]
 
 (1 < number_of_papers < 300)
 len(number_of_papers[(number_of_papers.n > 1) & (number_of_papers.n < 300)])
+
+client = pymongo.MongoClient('mongodb://localhost:27017')
+mydb = client["pkg"] 
+collection = mydb["articles_2000_2005"]
+
+list_AID = []
+
+docs = collection.find()
+for doc in tqdm.tqdm(docs):
+    if "a02_authorlist" in doc:
+        for author in doc["a02_authorlist"]:
+            list_AID.append(author["AID"])
+
+    
