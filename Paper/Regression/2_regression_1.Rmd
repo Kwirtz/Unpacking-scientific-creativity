@@ -52,7 +52,8 @@ indicators <- c("uzzi_ref","uzzi_mesh","lee_ref","lee_mesh","foster_ref","foster
 indicators_fw <- paste0(indicators, "_fw")
 independant <-  c("author_intra_abstract","author_inter_abstract", "author_intra_title", "author_inter_title")
 independant_fw <- paste0(independant, "_fw")
-variables <- c("nb_ref", "nb_meshterms", "year", "nb_aut", "journal_SJR", "is_review", "journal_age","sum_deg_cen_cumsum")
+variables <- c("nb_ref", "nb_meshterms", "year", "nb_aut", "journal_SJR", "is_review",
+               "journal_age","sum_deg_cen_cumsum","sum_deg_cen_cumsum_mean",'journal_main_cat')
 ```
 
 ################################################################################
@@ -74,28 +75,33 @@ df %>%
 ```{r} 
 
 
-mod_1 = lm(uzzi_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
-           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+mod_1 = lm(uzzi_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw +
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
                                               data = df)
 
 mod_2 = lm(lee_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
-           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+             I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
                                               data = df)
 
 mod_3 = lm(foster_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
-           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR+ journal_main_cat,
                                               data = df)
 
 mod_4 = lm(wang_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
-           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
                                               data = df)
 
 mod_5 = lm(shibayama_abstract_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
-           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
                                               data = df)
 
 stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
-          type = 'text', omit = variables)
+          type = 'text', omit = c(variables,"Constant"))
 
 ```
 ################################################################################
@@ -103,31 +109,107 @@ stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
 ################################################################################
 ```{r} 
 
+
 mod_1 = lm(uzzi_ref_fw ~ author_intra_abstract_fw + author_inter_abstract_fw +
-           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
                                               data = df)
 
 mod_2 = lm(lee_ref_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
-           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+             I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
                                               data = df)
-
 
 mod_3 = lm(foster_ref_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
-           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR+ journal_main_cat,
                                               data = df)
 
-
 mod_4 = lm(wang_ref_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
-           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
                                               data = df)
 
 mod_5 = lm(shibayama_title_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
-           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
                                               data = df)
 
 stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
-          type = 'text', omit = variables)
+          type = 'text', omit = c(variables,"Constant"))
 ```
+################################################################################
+####################### Share Abstract on mesh #######################################
+################################################################################
+
+```{r} 
+
+
+mod_1 = lm(uzzi_mesh_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_2 = lm(lee_mesh_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_3 = lm(foster_mesh_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR+ journal_main_cat,
+                                              data = df)
+
+mod_4 = lm(wang_mesh_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_5 = lm(shibayama_abstract_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
+          type = 'text', omit = c(variables,"Constant"))
+```
+
+################################################################################
+####################### Share Abstract on ref #######################################
+################################################################################
+
+```{r} 
+
+mod_1 = lm(uzzi_ref_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_2 = lm(lee_ref_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_3 = lm(foster_ref_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR+ journal_main_cat,
+                                              data = df)
+
+mod_4 = lm(wang_ref_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_5 = lm(shibayama_abstract_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
+          type = 'text', omit = c(variables,"Constant"))
+```
+
+
 ################################################################################
 ####################### Title on mesh ##########################################
 ################################################################################
@@ -194,7 +276,20 @@ stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
 errors <- residuals(mod_5)
 plot(density(errors), main="Density of Error Terms", xlab="Error", ylab="Density")
 ```
-```{r} 
+
+
+
+
+
+
+
+
+
+
+
+# quantile stuff
+
+```{r,eval=FALSE} 
 mod_1 = rq(uzzi_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
            nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
                                               data = df,tau=0.5)

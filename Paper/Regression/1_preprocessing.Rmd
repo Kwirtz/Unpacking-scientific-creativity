@@ -26,6 +26,9 @@ options(scipen = 5) # To deactivate annoying scientific number notation
 library(tidyverse) # Collection of all the good stuff like dplyr, ggplot2 ect.
 library(magrittr) # For extra-piping operators (eg. %<>%)
 library(glue)
+library(data.table)
+library(dplyr)
+library(ks)
 # Descriptives
 #library(skimr)
 library(stargazer)
@@ -35,6 +38,9 @@ library(xgboost)
 library(caret)  
 library(caTools)
 library(e1071)
+
+
+
 ```
 
 Import data
@@ -43,40 +49,18 @@ Import data
 
 df <- read_csv("../../Data/regression.csv")
 df$year <- as.factor(df$year)
+
+articles_2000_2005_issn = fread('../../Data/articles_2000_2005_issn.csv')
+setDT(articles_2000_2005_issn,key = 'PMID')
+
+df = merge(df,articles_2000_2005_issn)
+
 ```
-
-Clean journal catergory
-```{r} 
-df %<>%
-  rowwise() %>%
-  mutate(journal_main_cat = strsplit(journal_category, ";")[[1]][1]) %>%
-  ungroup() %>% 
-  mutate(journal_main_cat = gsub(' \\(Q\\d\\)$', "", journal_main_cat))
-```
-
-Clean journal age
-
-```{r} 
-df$journal_age <- replace(df$journal_age, which(df$journal_age < 0), NA)
-```
-
-
-First look
-
-```{r} 
-summary(df)
-```
-Missing
-```{r} 
-df %>% naniar::gg_miss_var()
-```
-
-
 Init name of variables of interest
 
 ```{r} 
 novelty_cat <- c("Technical Advance","Interesting Hypothesis","Novel Drug Target")
-variables <- c("nb_ref", "nb_meshterms", "year", "nb_aut", "journal_SJR", "is_review", "journal_age","sum_deg_cen_cumsum")
+variables <- c("nb_ref", "nb_meshterms", "year", "nb_aut", "journal_SJR", "is_review", "journal_age","sum_deg_cen_cumsum","sum_deg_cen_cumsum_mean", "journal_main_cat")
 indicators <- c("uzzi_ref","uzzi_mesh","lee_ref","lee_mesh","foster_ref","foster_mesh",
                 "wang_ref","wang_mesh","shibayama_abstract","shibayama_title")
 indicators_fw <- paste0(indicators, "_fw")
@@ -86,10 +70,51 @@ impact <-  c("nb_cit","DI1","DI5","DI1nok","DeIn","Breadth","Depth")
 impact_fw <- paste0(impact, "_fw")
 ```
 
+Clean journal category
+
+```{r} 
+df %<>%
+  rowwise() %>%
+  mutate(journal_main_cat = strsplit(journal_category, "; ")[[1]][1]) %>%
+  ungroup() %>% 
+  mutate(journal_main_cat = gsub(' \\(Q\\d\\)$', "", journal_main_cat))
+
+df$journal_main_cat <- as.factor(df$journal_main_cat)
+length(unique(df$journal_main_cat))
+
+```
+
+Clean journal age
+
+```{r, eval = FALSE} 
+df$journal_age <- replace(df$journal_age, which(df$journal_age < 0), NA)
+```
 
 Create novelty binary
 ```{r} 
 df <- df %>% mutate(novel_f1000 = ifelse(main_category %in% novelty_cat, 1, 0))
+```
+
+```{r} 
+df %<>%
+  mutate(sum_deg_cen_cumsum_mean = sum_deg_cen_cumsum/nb_aut,
+         uzzi_ref = -uzzi_ref,
+         uzzi_mesh = -uzzi_mesh)
+```
+
+replace na where it make sense
+
+
+```{r} 
+df %<>%
+  filter(nb_ref>1 & nb_meshterms>1 & nb_aut>1 & Journal_ISSN != "" & journal_main_cat != "") %>%
+  drop_na(Journal_ISSN)
+```
+
+
+```{r, eval = FALSE} 
+df %<>%
+  replace_na(list(nb_ref = 0, nb_meshterms = 0))
 ```
 
 Field weight by journal category from scimago
@@ -121,23 +146,29 @@ df %<>%
   ungroup()
 ```
 
-replace na where it make sense
-
+Missing
 ```{r} 
-df %<>%
-  replace_na(list(nb_ref = 0, nb_meshterms = 0))
-```
-
-
-```{r} 
-summary(df)
-```
-```{r} 
-sd(df$shibayama_abstract ,na.rm=TRUE)
+df %>% naniar::gg_miss_var()
 ```
 
 ```{r} 
-na.omit(df[df$journal_age<0,]$PMID)
+summary_col <- function(col) {
+   print(sum(!is.na(df[[col]])))
+   print(summary(df[[col]]))
+   print(sd(df[[col]],na.rm=TRUE))
+}
+summary_col(col="shibayama_abstract")
+```
+
+citation normal vs f1000
+```{r} 
+df_temp = df %>% 
+  drop_na(main_category)
+mean(df_temp$nb_cit, na.rm = TRUE)
+
+df_temp = df[is.na(df$main_category),]
+mean(df_temp$nb_cit, na.rm = TRUE)
+
 ```
 
 For regression only keep paper matched from f1000
@@ -171,6 +202,14 @@ for (i in novelty_cat){
 }
 ```
 
+```{r} 
+df_f1000 <- df_f1000 %>% 
+  mutate(novel_f1000_v2 = case_when(Technical_Advance__binary == 1 ~ 1,
+                                    Interesting_Hypothesis__binary == 1 ~ 1,
+                                    Novel_Drug_Target__binary == 1 ~ 1)) 
+df_f1000$novel_f1000_v2 <- replace(df_f1000$novel_f1000_v2, is.na(df_f1000$novel_f1000_v2), 0)
+```
+
 Data for reg1 on recombinatorial novelty
 ```{r} 
 df %>%
@@ -180,21 +219,24 @@ df %>%
 Data for reg 1 on recombinatorial novelty
 ```{r} 
 df %>%
-  select( all_of(c(indicators_fw,variables,independant_fw)) )%>%
+  select( all_of(c(indicators_fw,indicators,variables,independant_fw,
+                   "count_typical","count_diverse","share_typical","share_diverse","Journal_ISSN")) )%>%
   saveRDS(file = "../../Data/regression_1.rds")
 ```
 
 Data for reg 2 on Perceived novelty
 ```{r} 
 df_f1000 %>%
-  select( all_of(c(f1000_cat,f1000_cat_binary,variables,independant_fw,"novel_f1000")) ) %>%
+  select( all_of(c(f1000_cat,f1000_cat_binary,variables,independant_fw,"novel_f1000","novel_f1000_v2",
+                   "count_typical","count_diverse","share_typical","share_diverse","Journal_ISSN")) ) %>%
   saveRDS(file = "../../Data/regression_2.rds")
 ```
 
 Data for reg 3 on impact measure
 ```{r} 
 df %>%
-  select( all_of(c(impact_fw,variables,independant_fw)) )%>%
+  select( all_of(c(impact_fw,impact,variables,independant_fw,
+                   "count_typical","count_diverse","share_typical","share_diverse","Journal_ISSN")) )%>%
   saveRDS(file = "../../Data/regression_3.rds")
 ```
 
