@@ -1,0 +1,53 @@
+---
+title: 'Author perspective'
+author: "Kevin Wirtz (kevin.wirtz@unistra.fr)"
+date: "Updated `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_notebook:
+    code_folding: hide
+    df_print: paged
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+
+rm(list = ls(all.names = TRUE)) #will clear all objects includes hidden objects.
+gc() #free up memrory and report the memory usage.
+graphics.off()
+
+Sys.setenv(LANG = "en") # For english language
+options(scipen = 5) # To deactivate annoying scientific number notation
+
+### Load packages
+library(tidyverse) # Collection of all the good stuff like dplyr, ggplot2 ect.
+library(magrittr) # For extra-piping operators (eg. %<>%)
+library(glue)
+# Descriptives
+#library(skimr)
+library(stargazer)
+library(corrplot)
+# ML
+library(xgboost)
+library(caret)  
+library(caTools)
+library(e1071)
+```
+
+Import data
+```{r} 
+
+```
+
+First plot
+```{r} 
+
+plot(data=df_f1000,x=nb_aut, y=author_intra_title_fw)
+
+ggplot(data=df_f1000[df_f1000$nb_aut < 50, ] , aes(x=nb_aut, y=uzzi_ref_fw)) + 
+  geom_point()
+```
+

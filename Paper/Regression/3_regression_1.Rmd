@@ -1,0 +1,316 @@
+---
+title: 'Author perspective'
+author: "Kevin Wirtz (kevin.wirtz@unistra.fr)"
+date: "Updated `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_notebook:
+    code_folding: hide
+    df_print: paged
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+
+rm(list = ls(all.names = TRUE)) #will clear all objects includes hidden objects.
+gc() #free up memrory and report the memory usage.
+graphics.off()
+
+Sys.setenv(LANG = "en") # For english language
+options(scipen = 5) # To deactivate annoying scientific number notation
+
+### Load packages
+library(tidyverse) # Collection of all the good stuff like dplyr, ggplot2 ect.
+library(magrittr) # For extra-piping operators (eg. %<>%)
+library(glue)
+# Descriptives
+#library(skimr)
+library(stargazer)
+library(corrplot)
+# ML
+library(xgboost)
+library(caret)  
+library(caTools)
+library(e1071)
+library(quantreg)
+```
+
+Link between authors and recombinatorial novelty
+
+Import data
+```{r} 
+df = read_rds(file = "../../Data/regression_1.rds")
+```
+
+define dependant variables
+```{r} 
+indicators <- c("uzzi_ref","uzzi_mesh","lee_ref","lee_mesh","foster_ref","foster_mesh",
+                "wang_ref","wang_mesh","shibayama_abstract","shibayama_title")
+indicators_fw <- paste0(indicators, "_fw")
+independant <-  c("author_intra_abstract","author_inter_abstract", "author_intra_title", "author_inter_title")
+independant_fw <- paste0(independant, "_fw")
+variables <- c("nb_ref", "nb_meshterms", "year", "nb_aut", "journal_SJR", "is_review",
+               "journal_age","sum_deg_cen_cumsum","sum_deg_cen_cumsum_mean",'journal_main_cat')
+```
+
+################################################################################
+####################### Plots to choose models #################################
+################################################################################
+
+```{r} 
+df %>%
+  ggplot( aes(x=author_intra_abstract_fw)) +
+    geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8)
+```
+
+
+
+################################################################################
+####################### Abstract on mesh #######################################
+################################################################################
+
+```{r} 
+
+
+mod_1 = lm(uzzi_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw +
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_2 = lm(lee_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+             I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_3 = lm(foster_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR+ journal_main_cat,
+                                              data = df)
+
+mod_4 = lm(wang_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_5 = lm(shibayama_abstract_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
+          type = 'text', omit = c(variables,"Constant"))
+
+```
+################################################################################
+####################### Abstract on ref ########################################
+################################################################################
+```{r} 
+
+
+mod_1 = lm(uzzi_ref_fw ~ author_intra_abstract_fw + author_inter_abstract_fw +
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_2 = lm(lee_ref_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+             I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_3 = lm(foster_ref_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR+ journal_main_cat,
+                                              data = df)
+
+mod_4 = lm(wang_ref_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_5 = lm(shibayama_title_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
+          type = 'text', omit = c(variables,"Constant"))
+```
+################################################################################
+####################### Share Abstract on mesh #######################################
+################################################################################
+
+```{r} 
+
+
+mod_1 = lm(uzzi_mesh_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_2 = lm(lee_mesh_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_3 = lm(foster_mesh_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR+ journal_main_cat,
+                                              data = df)
+
+mod_4 = lm(wang_mesh_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_5 = lm(shibayama_abstract_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
+          type = 'text', omit = c(variables,"Constant"))
+```
+
+################################################################################
+####################### Share Abstract on ref #######################################
+################################################################################
+
+```{r} 
+
+mod_1 = lm(uzzi_ref_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_2 = lm(lee_ref_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_3 = lm(foster_ref_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR+ journal_main_cat,
+                                              data = df)
+
+mod_4 = lm(wang_ref_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+mod_5 = lm(shibayama_abstract_fw ~ share_diverse + share_typical +
+           I(share_diverse**2) + I(share_typical**2) + I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df)
+
+stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
+          type = 'text', omit = c(variables,"Constant"))
+```
+
+
+################################################################################
+####################### Title on mesh ##########################################
+################################################################################
+```{r} 
+
+
+mod_1 = lm(uzzi_mesh_fw ~ author_intra_title_fw + author_inter_title_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df)
+
+mod_2 = lm(lee_mesh_fw ~ author_intra_title_fw + author_inter_title_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df)
+
+mod_3 = lm(foster_mesh_fw ~ author_intra_title_fw + author_inter_title_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df)
+
+mod_4 = lm(wang_mesh_fw ~ author_intra_title_fw + author_inter_title_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df)
+
+mod_5 = lm(shibayama_abstract_fw ~ author_intra_title_fw + author_inter_title_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df)
+
+stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
+          type = 'text', omit = variables)
+
+```
+
+################################################################################
+####################### Title on ref ###########################################
+################################################################################
+
+```{r} 
+
+mod_1 = lm(uzzi_ref_fw ~ author_intra_title_fw + author_inter_title_fw +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df)
+
+mod_2 = lm(lee_ref_fw ~ author_intra_title_fw + author_inter_title_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df)
+
+
+mod_3 = lm(foster_ref_fw ~ author_intra_title_fw + author_inter_title_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df)
+
+
+mod_4 = lm(wang_ref_fw ~ author_intra_title_fw + author_inter_title_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df)
+
+mod_5 = lm(shibayama_title_fw ~ author_intra_title_fw + author_inter_title_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df)
+
+stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
+          type = 'text', omit = variables)
+```
+```{r} 
+errors <- residuals(mod_5)
+plot(density(errors), main="Density of Error Terms", xlab="Error", ylab="Density")
+```
+
+
+
+
+
+
+
+
+
+
+
+# quantile stuff
+
+```{r,eval=FALSE} 
+mod_1 = rq(uzzi_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df,tau=0.5)
+
+mod_2 = rq(lee_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df,tau=0.5)
+
+mod_3 = rq(foster_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df,tau=0.5)
+
+mod_4 = rq(wang_mesh_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df,tau=0.5)
+
+mod_5 = rq(shibayama_abstract_fw ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + is_review + journal_age + sum_deg_cen_cumsum,
+                                              data = df,tau=0.5)
+
+stargazer(mod_1, mod_2, mod_3, mod_4, mod_5,
+          type = 'text', omit = variables)
+
+```

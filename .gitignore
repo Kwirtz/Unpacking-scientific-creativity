@@ -159,3 +159,6 @@ en_core_sci_lg-0.4.0/setup.cfg
 en_core_sci_lg-0.4.0/setup.py
 *.tex
 Data/deg_cen.pickle
+*.yaml
+*.rds
+Data/regression.zip

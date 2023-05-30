@@ -1,0 +1,133 @@
+---
+title: 'Author perspective'
+author: "Kevin Wirtz (kevin.wirtz@unistra.fr)"
+date: "Updated `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_notebook:
+    code_folding: hide
+    df_print: paged
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+
+rm(list = ls(all.names = TRUE)) #will clear all objects includes hidden objects.
+gc() #free up memrory and report the memory usage.
+graphics.off()
+
+Sys.setenv(LANG = "en") # For english language
+options(scipen = 5) # To deactivate annoying scientific number notation
+
+### Load packages
+library(tidyverse) # Collection of all the good stuff like dplyr, ggplot2 ect.
+library(magrittr) # For extra-piping operators (eg. %<>%)
+library(glue)
+# Descriptives
+#library(skimr)
+library(stargazer)
+library(corrplot)
+# ML
+library(xgboost)
+library(caret)  
+library(caTools)
+library(e1071)
+```
+
+Link between authors and perceived novelty
+
+Import data
+```{r} 
+df = read_rds(file = "../../Data/regression_2.rds")
+df$journal_main_cat = as.factor(df$journal_main_cat)
+df %<>% rename("TAB" = "Technical_Advance__binary",
+              "NDTB" = "Novel_Drug_Target__binary",
+              "IHB" = "Interesting_Hypothesis__binary")
+```
+
+define dependant variables
+```{r} 
+novelty_cat <- c("Technical Advance","Interesting Hypothesis","Novel Drug Target")
+independant <-  c("author_intra_abstract","author_inter_abstract", "author_intra_title", "author_inter_title")
+independant_fw <- paste0(independant, "_fw")
+variables <- c("nb_ref", "nb_meshterms", "year", "nb_aut", "journal_SJR", "is_review", "journal_age","sum_deg_cen_cumsum","journal_main_cat")
+```
+
+################################################################################
+####################### Abstract on logit ######################################
+################################################################################
+
+```{r} 
+
+cov = list()
+mod_1 = glm(novel_f1000_v2 ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df, family=binomial(link = "logit"))
+vcov_cluster <- sandwich::vcovCL(mod_1, cluster = df$Journal_ISSN)
+cov[[1]] = sqrt(diag(vcov_cluster))
+
+mod_2 = glm(novel_f1000_v2 ~ author_intra_abstract_fw + author_inter_abstract_fw+
+               I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2)+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df, family=binomial(link = "logit"))
+vcov_cluster <- sandwich::vcovCL(mod_2, cluster = df$Journal_ISSN)
+cov[[2]] = sqrt(diag(vcov_cluster))
+
+mod_3 = glm(novel_f1000_v2 ~ author_intra_abstract_fw + author_inter_abstract_fw+
+                I(author_intra_abstract_fw*author_inter_abstract_fw)+ I(author_intra_abstract_fw**2) + I(author_inter_abstract_fw**2)+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df, family=binomial(link = "logit"))
+
+
+mod_4 = glm(novel_f1000_v2 ~ share_diverse + share_typical+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df, family=binomial(link = "logit"))
+vcov_cluster <- sandwich::vcovCL(mod_4, cluster = df$Journal_ISSN)
+cov[[3]] = sqrt(diag(vcov_cluster))
+
+
+mod_5 = glm(novel_f1000_v2 ~ share_diverse + share_typical+ I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df, family=binomial(link = "logit"))
+vcov_cluster <- sandwich::vcovCL(mod_5, cluster = df$Journal_ISSN)
+cov[[4]] = sqrt(diag(vcov_cluster))
+
+
+mod_6 = glm(novel_f1000_v2 ~ share_diverse + share_typical+ I(share_diverse*share_typical) + I(share_diverse**2) + I(share_typical**2) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df, family=binomial(link = "logit"))
+vcov_cluster <- sandwich::vcovCL(mod_6, cluster = df$Journal_ISSN)
+cov[[5]] = sqrt(diag(vcov_cluster))
+
+
+mod_7 = glm(novel_f1000_v2 ~ author_inter_abstract_fw + share_diverse + share_typical+ I(author_inter_abstract_fw**2)+ I(share_diverse*share_typical) +
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df, family=binomial(link = "logit"))
+
+
+stargazer(mod_1, mod_2, mod_4, mod_5, mod_6,
+          se = cov,
+          align = TRUE, type = 'latex',font.size = "small", omit = c(variables,"Constant"))
+
+```
+```{r} 
+
+mod_1 = glm(TAB ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df, family=binomial(link = "logit"))
+
+mod_2 = glm(NDTB ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df, family=binomial(link = "logit"))
+
+mod_3 = glm(IHB ~ author_intra_abstract_fw + author_inter_abstract_fw+
+           nb_ref + nb_meshterms + year + nb_aut + journal_SJR + journal_main_cat,
+                                              data = df, family=binomial(link = "logit"))
+
+stargazer(mod_1, mod_2, mod_3,
+          type = 'text', column.labels=c('Technical advance','Novel drug target', "Interesting Hypothesis"), omit = c(variables,"Constant"))
+
+```

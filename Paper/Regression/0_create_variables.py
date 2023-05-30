@@ -152,10 +152,10 @@ class CreateVariable:
                 self.db['control_var_2000_2005'].insert_many(list_of_insertion)
                 list_of_insertion = []
         self.db['control_var_2000_2005'].insert_many(list_of_insertion)
-"""
+
 for year in range(2000,2006):
     CreateVariable(year).run()
-"""
+
 #%% Create df for regressions
 
     
