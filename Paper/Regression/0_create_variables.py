@@ -100,7 +100,8 @@ class CreateVariable:
                     journal_age = None
             else:
                 journal_age = None
-            self.variables.update({'journal_SJR':SJR,
+            self.variables.update({'journal_ISSN':ISSN,
+                                    'journal_SJR':SJR,
                                     'journal_ref_per_doc':journal_ref_per_doc,
                                     'journal_cit_per_doc':journal_cit_per_doc,
                                     'journal_category':journal_category,
