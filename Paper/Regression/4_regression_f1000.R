@@ -40,10 +40,19 @@ final_df = final_df %>%
   group_by(PMID) %>% dplyr::select(-nb_cat) %>% 
   summarise(across(all_of(colnames(final_df)[2:13]), sum, .names = "{.col}"))
 
+no_new_findigs = final_df %>% select(-New.Finding) 
+no_new_findigs = no_new_findigs %>% group_by(PMID) %>% summarize( sum(across(all_of(colnames(no_new_findigs)[2:12])), na.rm = T))
+colnames(no_new_findigs)[2] = 'nb_cat_no_new'
+ids = (no_new_findigs %>% filter(nb_cat_no_new>0))$PMID
+
+
 df_f1000 = left_join(df_f1000,final_df)
 df_f1000 = as.data.table(df_f1000)
+df_f1000[,novel_f1000 := ifelse(Interesting.Hypothesis>0|Novel.Drug.Target>0|Technical.Advance>0,1,0)]
+df_f1000 = df_f1000[PMID %in% ids]
 
-reg = function(dependant,sq,int,fw,higly_exp = F,logit,novelty,independant){
+
+reg = function(dependant,sq,int,fw,higly_exp = F,logit,novelty,independant,sha){
   if(fw){
     dependant = paste0(dependant)
     independant = 'author_inter_abstract_fw + author_intra_abstract_fw'
@@ -53,27 +62,34 @@ reg = function(dependant,sq,int,fw,higly_exp = F,logit,novelty,independant){
               "nb_aut",
               'nb_meshterms',
               #"sum_deg_cen_cumsum",
+              "novel_f1000",
               "year",
               "journal_main_cat",
               "share_diverse",
               "share_typical",
-              "journal_SJR",
               "author_inter_abstract_fw",
               "author_intra_abstract_fw",
+              "journal_SJR",
               "Journal_ISSN",
               dependant)
+    if(sha == T){
+      independant = 'author_intra_abstract_fw'
+      independant_sq = 'I(share_diverse**2)'}
   }else{
     if(novelty){
       independant = independant
+      vars_ = c(independant)
     }else{
       independant = 'author_inter_abstract + author_intra_abstract'
       independant_sq = 'I(author_inter_abstract**2) + I(author_intra_abstract**2)'
       independant_inter = 'I(author_inter_abstract*author_intra_abstract)'
+      vars_ = c()
     }
-    vars_ = c("nb_ref",
+    vars_ = c(vars_,c("nb_ref",
               "nb_aut",
               'nb_meshterms',
               #"sum_deg_cen_cumsum",
+              "novel_f1000",
               "year",
               "journal_main_cat",
               "share_diverse",
@@ -82,8 +98,7 @@ reg = function(dependant,sq,int,fw,higly_exp = F,logit,novelty,independant){
               "author_inter_abstract",
               "author_intra_abstract",
               "Journal_ISSN",
-              dependant,
-              independant)
+              dependant))
   }
   
   tmp = na.omit(df_f1000[,..vars_])
@@ -116,7 +131,7 @@ reg = function(dependant,sq,int,fw,higly_exp = F,logit,novelty,independant){
       if(sq){
         formula_ = gsub('I\\(share_diverse\\*\\*2\\)','share_typical \\+ I(share_diverse*share_typical)',formula_)
       } else {
-        formula_ = gsub('share_diverse','share_diverse \\+ share_typical \\+ I(share_diverse*share_typical)',formula_)
+        formula_ = gsub('share_diverse','share_diverse \\+ share_typical',formula_)
       }
     }
   }
@@ -133,7 +148,7 @@ reg = function(dependant,sq,int,fw,higly_exp = F,logit,novelty,independant){
   return(list(model,vcov_cluster))
 }
 
-get_table = function(all_dep,title,sq,int,fw,higly_exp=F,logit,novelty = F,independant=F){
+get_table = function(all_dep,title,sq,int,fw,higly_exp=F,logit,novelty = F,independant=F,sha = F){
   
   models = list()
   cov = list()
@@ -145,7 +160,7 @@ get_table = function(all_dep,title,sq,int,fw,higly_exp=F,logit,novelty = F,indep
                 higly_exp = higly_exp,
                 logit = logit,
                 novelty = novelty,
-                independant= independant)
+                independant= independant, sha = F)
     models[[i]] = model[[1]]
     cov[[i]] = sqrt(diag(model[[2]]))
   }
@@ -164,14 +179,14 @@ get_table = function(all_dep,title,sq,int,fw,higly_exp=F,logit,novelty = F,indep
     models, 
     se = cov,
     align = TRUE, type = "latex",
-    keep = c(independant)#author_inter_abstract','author_intra_abstract','share_diverse',
-            # "share_typical",'nb_aut','nb_ref','nb_meshterms','sum_deg_cen_cumsum','journal_SJR')
+    keep = c('author_inter_abstract','author_intra_abstract','share_diverse',
+            "share_typical",'nb_aut','nb_ref','nb_meshterms','sum_deg_cen_cumsum','journal_SJR')
     #out = paste0(gsub(' ','_',title),'.tex')
   )
 }
 
 
-all_dep = c('New.Finding',                      
+all_dep = c(#'New.Finding',                      
 'Interesting.Hypothesis',           
 'Technical.Advance',                
 'Confirmation',                     
@@ -181,12 +196,13 @@ tables = list()
 for(i in 1:length(indicators_fw)){
   toclean = get_table(all_dep,
             'LOGIT- Cognitive dimension and Novelty',
-            sq = F, 
+            sq = T, 
             int = F,
-            fw = F,
+            fw = T,
             logit = F,
+            higly_exp = T,
             novelty = T,
-            independant = indicators_fw[i])[16:20]
+            independant = indicators_fw[i],sha = F)[16:20]
   n = strsplit(toclean[5],split = '\\{')[[1]][4]
   n = strsplit(n,'\\}')[[1]][1]
   toclean[1] = paste0(toclean[1],' & ',n)
@@ -194,13 +210,69 @@ tables[[i]] = toclean[1:4]
 }
 
 
-
-get_table(all_dep,
-          'LOGIT- Cognitive dimension and Novelty',
-          sq = F, 
+models = list()
+cov = list()
+for(i in 1:5){
+  int = F
+  sq = F
+  fw = F
+  higly_exp = F
+  logit = T
+  novelty = F
+  independant = F
+  sha = F
+  if(i==3|i==4){
+    sha = T
+  }
+  if(i==2|i==4|i==5){
+    sq = T
+  }
+  if(i > 2){
+    higly_exp = T
+  }
+  model = reg(dependant = "novel_f1000",
+              sq = sq,
+              int = int,
+              fw = fw,
+              higly_exp = higly_exp,
+              logit = logit,
+              novelty = novelty,
+              independant= independant ,sha = sha)
+  models[[i]] = model[[1]]
+  cov[[i]] = sqrt(diag(model[[2]]))
+}
+if(sq){
+  title = paste0(title,'_sq')
+}
+if(int){
+  title = paste0(title,'_int')
+}
+if(logit){
+  title = paste0('logit_','LOGIT- nov_cat_f1000')
+} else {
+  title = paste0('poisson_','LOGIT- nov_cat_f1000')
+}
+stargazer::stargazer(
+  models, 
+  se = cov,
+  align = TRUE, type = "latex",
+  keep = c('author_inter_abstract','author_intra_abstract','share_diverse',
+           "share_typical",'nb_aut','nb_ref','nb_meshterms','sum_deg_cen_cumsum','journal_SJR')
+)
+  
+get_table('novel_f1000',
+          'LOGIT- nov_cat_f1000',
+          sq = T, 
           int = F,
-          fw = F,
+          fw = T,
           logit = T)
+get_table('novel_f1000',
+          'LOGIT- nov_cat_f1000',
+          sq = T, 
+          int = F,
+          fw = T,
+          logit = T,
+          higly_exp = T)
 
 
 get_table(all_dep,
