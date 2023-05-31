@@ -152,9 +152,10 @@ class CreateVariable:
                 self.db['control_var_2000_2005'].insert_many(list_of_insertion)
                 list_of_insertion = []
         self.db['control_var_2000_2005'].insert_many(list_of_insertion)
-
+"""
 for year in range(2000,2006):
     CreateVariable(year).run()
+"""
 
 #%% Create df for regressions
 
@@ -426,14 +427,14 @@ for pmid in tqdm.tqdm(df["PMID"]):
         except Exception as e:
             continue      
         
+df['journal_main_cat'] = df['journal_category'].str.split('; ').str.get(0)
+df['journal_main_cat'] = df['journal_main_cat'].apply(lambda x: re.sub(' \\(Q\\d\\)$', '', str(x)))
         
 df_intra = pd.DataFrame(list_of_insertion_intra,columns=["PMID","intra"])
 df_inter = pd.DataFrame(list_of_insertion_inter,columns=["PMID","inter"])
-df_intra['percent_rank'] = df_intra['intra'].rank(pct=True)
-df_inter['percent_rank'] = df_inter['inter'].rank(pct=True)
-
-
 df_temp = pd.merge(df, df_intra, on = "PMID", how = 'outer')
+
+df_temp['percent_rank'] = df_temp.groupby(['journal_main_cat', 'year'])['intra'].rank(pct=True)
 df.index = df["PMID"]
 
 
@@ -469,9 +470,3 @@ df.to_csv("Data/regression.csv",index=False)
 #df = pd.read_csv("Data/regression.csv")
 #df = df.drop_duplicates(subset="PMID", keep='first')
 #df.to_csv("Data/regression.csv",index=False)
-{AND_ID:8542016}
-
-{PMID:11802423}
-10592202
-10592278
-11072346
