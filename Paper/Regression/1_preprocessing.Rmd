@@ -50,11 +50,6 @@ Import data
 df <- read_csv("../../Data/regression.csv")
 df$year <- as.factor(df$year)
 
-articles_2000_2005_issn = fread('../../Data/articles_2000_2005_issn.csv')
-setDT(articles_2000_2005_issn,key = 'PMID')
-
-df = merge(df,articles_2000_2005_issn)
-
 ```
 Init name of variables of interest
 
@@ -70,19 +65,6 @@ impact <-  c("nb_cit","DI1","DI5","DI1nok","DeIn","Breadth","Depth")
 impact_fw <- paste0(impact, "_fw")
 ```
 
-Clean journal category
-
-```{r} 
-df %<>%
-  rowwise() %>%
-  mutate(journal_main_cat = strsplit(journal_category, "; ")[[1]][1]) %>%
-  ungroup() %>% 
-  mutate(journal_main_cat = gsub(' \\(Q\\d\\)$', "", journal_main_cat))
-
-df$journal_main_cat <- as.factor(df$journal_main_cat)
-length(unique(df$journal_main_cat))
-
-```
 
 Clean journal age
 
@@ -107,8 +89,8 @@ replace na where it make sense
 
 ```{r} 
 df %<>%
-  filter(nb_ref>1 & nb_meshterms>1 & nb_aut>1 & Journal_ISSN != "" & journal_main_cat != "") %>%
-  drop_na(Journal_ISSN)
+  filter(nb_ref>1 & nb_meshterms>1 & nb_aut>1 & journal_ISSN != "" & journal_main_cat != "") %>%
+  drop_na(journal_ISSN)
 ```
 
 
@@ -144,6 +126,8 @@ df %<>%
          Depth_fw = Depth %>% percent_rank(),
            ) %>%
   ungroup()
+
+fwrite(df,'reg_df.csv')
 ```
 
 Missing
@@ -157,7 +141,7 @@ summary_col <- function(col) {
    print(summary(df[[col]]))
    print(sd(df[[col]],na.rm=TRUE))
 }
-summary_col(col="shibayama_abstract")
+summary_col(col="uzzi_ref")
 ```
 
 citation normal vs f1000
@@ -216,33 +200,6 @@ df %>%
   select( all_of(c(indicators_fw,variables,independant_fw)) )
 ```
 
-Data for reg 1 on recombinatorial novelty
 ```{r} 
-df %>%
-  select( all_of(c(indicators_fw,indicators,variables,independant_fw,
-                   "count_typical","count_diverse","share_typical","share_diverse","Journal_ISSN")) )%>%
-  saveRDS(file = "../../Data/regression_1.rds")
+fwrite(df,'../../Data/reg_df.csv')
 ```
-
-Data for reg 2 on Perceived novelty
-```{r} 
-df_f1000 %>%
-  select( all_of(c(f1000_cat,f1000_cat_binary,variables,independant_fw,"novel_f1000","novel_f1000_v2",
-                   "count_typical","count_diverse","share_typical","share_diverse","Journal_ISSN")) ) %>%
-  saveRDS(file = "../../Data/regression_2.rds")
-```
-
-Data for reg 3 on impact measure
-```{r} 
-df %>%
-  select( all_of(c(impact_fw,impact,variables,independant_fw,
-                   "count_typical","count_diverse","share_typical","share_diverse","Journal_ISSN")) )%>%
-  saveRDS(file = "../../Data/regression_3.rds")
-```
-
-Data for plots
-```{r} 
-df %>%
-  saveRDS(file = "../../Data/plots.rds")
-```
-

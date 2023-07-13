@@ -23,18 +23,10 @@ library(ks)
 #setwd("G:/Github/Taxonomy-of-novelty")
 #setwd("C:/Users/kevin/Documents/GitHub/Taxonomy-of-novelty")
 
-#Author 90e percentil
-#shiba
-#issue with uzzi ref
 
-df = fread('/home/peltouz/Documents/papers/taxo/regression.csv')
+df = fread('Data/regression.csv')
 df = unique(df, by = 'PMID')
-setDT(df,key = 'PMID')
 
-articles_2000_2005_issn = fread('/home/peltouz/Documents/papers/taxo/articles_2000_2005_issn.csv')
-setDT(articles_2000_2005_issn,key = 'PMID')
-
-df = merge(df,articles_2000_2005_issn)
 #########################################
 
 # Hangle multiple category for journals
@@ -98,4 +90,4 @@ df %<>%
   ) %>%
   ungroup()
 
-fwrite(df,'reg_df.csv')
+fwrite(df,'Data/reg_df.csv')

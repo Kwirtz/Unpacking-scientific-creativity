@@ -1,11 +1,32 @@
-### Generic preamble
+---
+title: 'Author perspective'
+author: "Kevin Wirtz (kevin.wirtz@unistra.fr)"
+date: "Updated `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_notebook:
+    code_folding: hide
+    df_print: paged
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+
 rm(list = ls(all.names = TRUE)) #will clear all objects includes hidden objects.
 gc() #free up memrory and report the memory usage.
 graphics.off()
 
+Sys.setenv(LANG = "en") # For english language
+options(scipen = 5) # To deactivate annoying scientific number notation
+
 library(data.table)
+```
 
-
+Regression function
+```{r} 
 reg = function(dependant,sq,int,fw,higly_exp = F){
     if(fw){
       dependant = paste0(dependant,'_fw')
@@ -47,7 +68,7 @@ reg = function(dependant,sq,int,fw,higly_exp = F){
     tmp = na.omit(df[,..vars_])
     tmp = tmp[journal_main_cat != ""]
     tmp = tmp[journal_ISSN != ""]
-    controls = 'nb_ref + nb_meshterms + nb_aut + as.factor(year) + journal_main_cat + journal_SJR'
+    controls = 'nb_ref + nb_meshterms + nb_aut + as.factor(year) + journal_SJR'# + journal_main_cat'
     if(sq){
       if(int){
         formula_ = paste0(dependant," ~ ",independant," + ",independant_sq,' + ',independant_inter,' + ',controls)
@@ -85,7 +106,10 @@ reg = function(dependant,sq,int,fw,higly_exp = F){
   
     return(list(model,vcov_cluster))
 }
+```
 
+Get table result
+```{r} 
 get_table = function(all_dep,title,sq,int,fw,higly_exp=F){
  
   models = list()
@@ -108,113 +132,113 @@ get_table = function(all_dep,title,sq,int,fw,higly_exp=F){
   stargazer::stargazer(
     models, 
     se = cov,
-    align = TRUE, type = "latex",
+    align = TRUE, type = "text",
     keep = c('author_inter_abstract','author_intra_abstract','share_diverse',
              "share_typical",'nb_aut','nb_ref','nb_meshterms','sum_deg_cen_cumsum','journal_SJR'),
-    out = paste0(gsub(' ','_',title),'.tex')
+    out = paste0("../Results/regressions/",gsub(' ','_',title),'.tex')
     )
 }
+```
 
-df = fread('reg_df.csv')
+load data
+```{r} 
+df = fread('../../Data/reg_df.csv')
+```
+
+Cognitive dimension and Novelty (on References)
+```{r} 
 
 all_dep =  c("uzzi_ref","lee_ref","foster_ref","wang_ref","shibayama_abstract")
 
+get_table(all_dep,
+          'Cognitive dimension and Novelty (on References; Field-year percentage rank, squared)',
+          sq = T, 
+          int = F,
+          fw = T)
 
 get_table(all_dep,
-          'Cognitive dimension and Novelty (on References)',
-          sq = F, 
+          'Cognitive dimension and Novelty (On References; Field-Year percentage rank; share-intra/inter)',
+          sq = T, 
+          int = F,
+          higly_exp = T,
+          fw = T)
+
+get_table(all_dep,
+          'Cognitive dimension and Novelty (on References, squared)',
+          sq = T, 
           int = F,
           fw = F)
 
 get_table(all_dep,
-          'Cognitive dimension and Novelty (On References; Field-Year percentage rank)',
-          sq = F, 
+          'Cognitive dimension and Novelty (On References, share-intra/inter)',
+          sq = T, 
           int = F,
-          fw = T)
+          higly_exp = T,
+          fw = F)  
+  
+```
 
+```{r} 
 all_dep =  c("uzzi_mesh","lee_mesh","foster_mesh","wang_mesh")
 
 get_table(all_dep,
-          'Cognitive dimension and Novelty (on Meshterms)',
-          sq = F, 
+          'Cognitive dimension and Novelty (on Meshterms; Field-year percentage rank, squared)',
+          sq = T, 
+          int = F,
+          fw = T)
+
+get_table(all_dep,
+          'Cognitive dimension and Novelty (On Meshterms; Field-Year percentage rank; share-intra/inter)',
+          sq = T, 
+          int = F,
+          higly_exp = T,
+          fw = T)
+
+get_table(all_dep,
+          'Cognitive dimension and Novelty (on Meshterms, squared)',
+          sq = T, 
           int = F,
           fw = F)
 
 get_table(all_dep,
-          'Cognitive dimension and Novelty (On Meshterms; Field-Year percentage rank)',
-          sq = F, 
+          'Cognitive dimension and Novelty (On Meshterms, share-intra/inter)',
+          sq = T, 
           int = F,
-          fw = T)
+          higly_exp = T,
+          fw = F)  
 
+```
+
+```{r} 
 
 all_dep =  c("nb_cit","DI1","DI5","DI1nok","DeIn","Breadth","Depth")
 
 get_table(all_dep,
           'Cognitive dimension and Scientific Impact',
-          sq = F, 
+          sq = T, 
           int = F,
-          fw = F)
+          fw = T)
 
 get_table(all_dep,
           'Cognitive dimension and Scientific Impact (Field-Year percentage rank)',
           sq = F, 
           int = F,
+          higly_exp = T,
+          fw = T)
+
+get_table(all_dep,
+          'Cognitive dimension and Scientific Impact',
+          sq = T, 
+          int = F,
+          fw = T)
+
+get_table(all_dep,
+          'Cognitive dimension and Scientific Impact (Field-Year percentage rank)',
+          sq = F, 
+          int = F,
+          higly_exp = T,
           fw = T)
 
 
+```
 
-
-
-#-----------------------------------------------------------------------------
-
-
-
-all_dep =  c("uzzi_ref","lee_ref","foster_ref","wang_ref","shibayama_abstract")
-
-
-get_table(all_dep,
-          'Cognitive diversity, Share of higly exploratory individuals and Novelty (on References)',
-          sq = F, 
-          int = F,
-          fw = F,
-          higly_exp = T)
-
-get_table(all_dep,
-          'Cognitive diversity, Share of higly exploratory individuals and Novelty (On References; Field-Year percentage rank)',
-          sq = F, 
-          int = F,
-          fw = T,
-          higly_exp = T)
-
-all_dep =  c("uzzi_mesh","lee_mesh","foster_mesh","wang_mesh")
-
-get_table(all_dep,
-          'Cognitive diversity, Share of higly exploratory individuals and Novelty (on Meshterms)',
-          sq = F, 
-          int = F,
-          fw = F,
-          higly_exp = T)
-
-get_table(all_dep,
-          'Cognitive diversity, Share of higly exploratory individuals and Novelty (On Meshterms; Field-Year percentage rank)',
-          sq = F, 
-          int = F,
-          fw = T,
-          higly_exp = T)
-
-
-all_dep =  c("nb_cit","DI1","DI5","DI1nok","DeIn","Breadth","Depth")
-
-get_table(all_dep,
-          'Cognitive diversity, Share of higly exploratory individuals and Scientific Impact',
-          sq = F, 
-          int = F,
-          fw = F,
-          higly_exp = T)
-
-get_table(all_dep,
-          'Cognitive diversity, Share of higly exploratory individuals and Scientific Impact (Field-Year percentage rank)',
-          sq = F, 
-          int = F,
-          fw = T,
-          higly_exp = T)
