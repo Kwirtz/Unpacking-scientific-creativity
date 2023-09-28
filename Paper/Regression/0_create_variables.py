@@ -153,10 +153,9 @@ class CreateVariable:
                 self.db['control_var_2000_2005'].insert_many(list_of_insertion)
                 list_of_insertion = []
         self.db['control_var_2000_2005'].insert_many(list_of_insertion)
-"""
+
 for year in range(2000,2006):
     CreateVariable(year).run()
-"""
 
 #%% Create df for regressions
 
@@ -341,6 +340,10 @@ def get_control_variables(doc):
     except:
         c04_referencelist_age_std = None
     try:
+        journal_ISSN = doc["journal_ISSN"]
+    except:
+        journal_ISSN = None     
+    try:
         journal_SJR = doc["journal_SJR"]
     except:
         journal_SJR = None
@@ -373,12 +376,12 @@ def get_control_variables(doc):
     except:
         a04_abstract_length = None
     return [PMID,year,nb_cit,nb_ref, nb_meshterms, sum_deg_cen, sum_deg_cen_cumsum, sum_deg_cen_cumsum_mean, share_aff_captured,nb_aut,
-            c04_referencelist,c04_referencelist_age_std, journal_SJR, journal_ref_per_doc, journal_cit_per_doc, journal_category, journal_age,
+            c04_referencelist,c04_referencelist_age_std,journal_ISSN, journal_SJR, journal_ref_per_doc, journal_cit_per_doc, journal_category, journal_age,
             is_review, ArticleTitle_length,a04_abstract_length]
 
 columns = ["PMID","year","nb_cit","nb_ref","nb_meshterms","sum_deg_cen","sum_deg_cen_cumsum", "sum_deg_cen_cumsum_mean",
            "share_aff_captured","nb_aut","c04_referencelist",
-           "c04_referencelist_age_std", "journal_SJR", "journal_ref_per_doc", "journal_cit_per_doc",
+           "c04_referencelist_age_std","journal_ISSN", "journal_SJR", "journal_ref_per_doc", "journal_cit_per_doc",
            "journal_category", "journal_age", "is_review", "ArticleTitle_length","a04_abstract_length",
            "DI1","DI5","DI1nok","DeIn","Breadth","Depth","wang_mesh", "wang_ref","foster_mesh",
            "foster_ref","uzzi_mesh","uzzi_ref","lee_mesh","lee_ref", "shibayama_abstract", "shibayama_title",

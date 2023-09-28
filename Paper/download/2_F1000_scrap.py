@@ -155,7 +155,7 @@ class dl_f1000():
                 with open(fs_file+ "/F1000_lastit.txt","w+") as f:
                     f.write(str(it))
             
-instance = dl_f1000(username = "bot_alfred@outlook.fr", password = "Bot012345678914061923",
+instance = dl_f1000(username = <USERNAME>, password = <PASSWORD>,
          mongo_uri = 'mongodb://localhost:27017', db_name= "F1000_2")
 
 # Connect to go paper by paper
